@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:title" content="Status Bot | Commands" />
+    <meta property="og:description" content="View a list off our current commands & features!" />
+    <meta property="og:url" content="https://status-bot.xyz/commands" />
+    <meta name="theme-color" content="#4162ff" />
+    <title>Status Bot | Commands</title>
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/fRHzdcrb/Copy-of-S.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
+</head>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    :root {
+        --bg-1: rgba(65, 98, 255, 0.06);
+        --bg-2: rgba(65, 98, 255, 0.3);
+        --page-bg: #141414;
+    }
+
+    body {
+        color: white;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        box-shadow: 0 0 25px var(--bg-2);
+        background: var(--page-bg);
+        background-image:
+            radial-gradient(circle at 94% 6%, var(--bg-2), rgba(0, 0, 0, 0.02) 340px, transparent 500px),
+            radial-gradient(circle at 0% 88%, var(--bg-2), var(--bg-1) 340px, transparent 500px),
+            radial-gradient(circle at 75% 105%, var(--bg-2), var(--bg-1) 300px, transparent 500px),
+            radial-gradient(circle at 20% 20%, var(--bg-1), transparent 320px),
+            radial-gradient(circle at 80% 70%, var(--bg-1), transparent 300px),
+            radial-gradient(circle at 50% 10%, var(--bg-1), transparent 260px),
+            radial-gradient(circle at 12% 60%, var(--bg-1), transparent 300px);
+        background-attachment: fixed;
+        background-size: cover;
+
+        animation: fadeInBg 0.9s ease forwards;
+    }
+
+    @keyframes fadeInBg {
+        from {
+            opacity: 0;
+            filter: blur(8px);
+        }
+
+        to {
+            opacity: 1;
+            filter: blur(0);
+        }
+    }
+
+    nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 32px 60px;
+        position: relative;
+        z-index: 10;
+    }
+
+    .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 35px;
+    }
+
+    .nav-left img {
+        height: 45px;
+        width: 45px;
+        border-radius: 50%;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 35px;
+    }
+
+    .nav-links a {
+        position: relative;
+        text-decoration: none;
+        color: white;
+        font-weight: 500;
+        font-size: 20px;
+    }
+
+    .nav-links a::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: -5px;
+        width: 0%;
+        height: 2px;
+        background-color: #4162ff;
+        transition: width .3s ease;
+    }
+
+    .nav-links a:hover::after {
+        width: 100%;
+    }
+
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .username-btn {
+        background-color: #4162ff;
+        border: 1px solid white;
+        border-radius: 10px;
+        padding: 14px 28px;
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: transform .3s;
+        user-select: none;
+        margin-top: 6px;
+    }
+
+    .username-btn:hover {
+        transform: scale(1.05);
+        background-color: #3350d8;
+    }
+
+    .username-btn img {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+    }
+
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        background-color: #303030;
+        border: 1px solid #555;
+        border-radius: 8px;
+        min-width: 100%;
+        z-index: 100;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-6px);
+        transition: opacity .2s ease, transform .2s ease;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+        pointer-events: none;
+    }
+
+    .dropdown-content.show {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    .dropdown-content a {
+        color: white;
+        padding: 10px 14px;
+        text-decoration: none;
+        display: block;
+        transition: background .12s ease;
+        text-align: center;
+    }
+
+    .dropdown-content a:hover {
+        background-color: #ff5e5e;
+    }
+
+    .menu-toggle {
+        display: none;
+        font-size: 30px;
+        color: white;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .mobile-menu {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        background-color: #252525;
+        width: 100%;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 99;
+        border-top: 1px solid #4162ff;
+        padding: 20px 0;
+        gap: 15px;
+        animation: slideDown .3s ease forwards;
+    }
+
+    .mobile-menu.show {
+        display: flex;
+    }
+
+    .mobile-menu a {
+        color: white;
+        text-decoration: none;
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .mobile-login {
+        background-color: #4162ff;
+        border: 1px solid white;
+        border-radius: 10px;
+        padding: 10px 22px;
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+        cursor: pointer;
+        transition: transform .3s, background-color .3s;
+    }
+
+    .mobile-login:hover {
+        transform: scale(1.05);
+        background-color: #3350d8;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .commands-container {
+        text-align: center;
+        margin-top: 60px;
+        padding-bottom: 80px;
+        position: relative;
+    }
+
+    .commands-title {
+        font-size: 64px;
+        font-weight: 900;
+        color: #fff;
+        text-shadow: 0 0 25px var(--bg-2);
+        margin-bottom: 40px;
+        letter-spacing: 1px;
+    }
+
+    .category-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin-bottom: 40px;
+    }
+
+    .category-tab {
+        padding: 14px 34px;
+        background: rgba(20, 20, 20, 0.8);
+        border: 2px solid #4162ff;
+        border-radius: 12px;
+        font-size: 19px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+
+    .category-tab:hover {
+        background: rgba(65, 98, 255, 0.24);
+        box-shadow: 0 0 12px var(--bg-2);
+        transform: scale(1.06);
+    }
+
+    .category-tab.active {
+        background: #4162ff;
+        color: #fff;
+        transform: scale(1.1);
+        box-shadow: 0 0 30px var(--bg-2);
+    }
+
+    .separator-line {
+        width: 220px;
+        height: 3px;
+        background-color: #4162ff;
+        margin: 25px auto 40px;
+        border-radius: 2px;
+        box-shadow: 0 0 10px var(--bg-2);
+    }
+
+    .commands-box {
+        background: var(--bg-1);
+        border: 2px solid #4162ff;
+        border-radius: 20px;
+        width: 85%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 60px 40px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 40px;
+        justify-content: center;
+        backdrop-filter: blur(8px);
+    }
+
+    .bg-svg {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        overflow: visible;
+    }
+
+    .bg-shape {
+        filter: blur(28px);
+        opacity: 0.18;
+        transform-origin: center;
+    }
+
+    .star {
+        fill: #ffffff;
+        opacity: 0.06;
+        transform-origin: center;
+        filter: drop-shadow(0 0 6px rgba(140, 180, 255, 0.2));
+        animation: glisten 4s infinite ease-in-out both;
+    }
+
+    .star.fast {
+        animation-duration: 2s;
+    }
+
+    .star.slow {
+        animation-duration: 6s;
+    }
+
+    .star.d1 {
+        animation-delay: 0s;
+    }
+
+    .star.d2 {
+        animation-delay: 0.6s;
+    }
+
+    .star.d3 {
+        animation-delay: 1.2s;
+    }
+
+    .star.d4 {
+        animation-delay: 1.9s;
+    }
+
+    .star.d5 {
+        animation-delay: 2.6s;
+    }
+
+    .star.d6 {
+        animation-delay: 3.3s;
+    }
+
+    @keyframes glisten {
+        0% {
+            opacity: 0.03;
+            transform: scale(0.92);
+            filter: drop-shadow(0 0 0 rgba(140, 180, 255, 0));
+        }
+
+        6% {
+            opacity: 1;
+            transform: scale(1.18);
+            filter: drop-shadow(0 0 14px rgba(180, 210, 255, 0.95));
+        }
+
+        30% {
+            opacity: 0.45;
+            transform: scale(1.04);
+            filter: drop-shadow(0 0 10px rgba(160, 200, 255, 0.65));
+        }
+
+        100% {
+            opacity: 0.03;
+            transform: scale(0.92);
+            filter: drop-shadow(0 0 0 rgba(140, 180, 255, 0));
+        }
+    }
+
+    #cursorTrail {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        overflow: visible;
+    }
+
+    .trail-dot {
+        position: absolute;
+        pointer-events: none;
+        border-radius: 50%;
+        transform: translate(-50%, -50%) scale(1);
+        will-change: transform, opacity;
+        mix-blend-mode: screen;
+        background: radial-gradient(circle at 30% 30%, rgba(160, 200, 255, 0.95), rgba(70, 130, 255, 0.65) 40%, rgba(60, 100, 255, 0.15) 70%, transparent 80%);
+        box-shadow: 0 0 12px rgba(100, 160, 255, 0.55);
+        opacity: 0.95;
+        transition: transform 700ms cubic-bezier(.2, .8, .2, 1), opacity 700ms linear;
+    }
+
+    .command-card {
+        border: 2px solid #4162ff;
+        border-radius: 14px;
+        padding: 30px;
+        width: 280px;
+        text-align: left;
+        background: rgba(15, 15, 15, 0.8);
+        transition: all 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .command-card:hover {
+        transform: translateY(-6px) scale(1.05);
+        box-shadow: 0 0 25px rgba(65, 98, 255, 0.6);
+    }
+
+    @media (max-width: 900px) {
+
+        .nav-links,
+        .dropdown {
+            display: none;
+        }
+
+        .menu-toggle {
+            display: block;
+            position: absolute;
+            top: 28px;
+            right: 28px;
+        }
+
+        body {
+            background-attachment: scroll;
+        }
+
+        .nav-left img {
+            width: 36px;
+            height: 36px;
+        }
+
+        .commands-title {
+            font-size: 42px;
+        }
+
+        .command-card h3 {
+            font-size: 20px;
+        }
+
+        .command-card code {
+            font-size: 15px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .commands-box {
+            width: 92%;
+            padding: 30px 18px;
+        }
+
+        .command-card {
+            width: 100%;
+        }
+
+        .commands-title {
+            font-size: 36px;
+        }
+
+        .category-tab {
+            font-size: 15px;
+            padding: 8px 16px;
+        }
+
+        .mobile-menu a {
+            font-size: 16px;
+        }
+    }
+
+    .site-footer {
+        background: #1f1f1f;
+        color: #fff;
+        padding: 36px 28px 56px;
+        font-size: 16px;
+        line-height: 1.4;
+        box-shadow: 0 -6px 30px rgba(0, 0, 0, 0.6);
+        margin-top: 530px;
+    }
+
+    .site-footer .footer-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        max-width: 1200px;
+        margin: 0 auto 14px;
+    }
+
+    .footer-logo {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 36px;
+        background: linear-gradient(90deg, #4162ff, #9ca3af);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 6px 30px rgba(65, 98, 255, 0.28);
+    }
+
+    .site-footer .footer-right a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        margin: 0 6px;
+    }
+
+    .site-footer .footer-bottom {
+        text-align: center;
+        margin-top: 8px;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    @media (max-width:900px) {
+        .footer-logo {
+            font-size: 28px
+        }
+
+        .site-footer {
+            padding: 28px 18px 44px
+        }
+
+        .site-footer .footer-top {
+            flex-direction: column;
+            gap: 10px
+        }
+    }
+</style>
+
+<body>
+    <svg class="bg-svg" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#4162ff" stop-opacity="0.95" />
+                <stop offset="100%" stop-color="#9ca3af" stop-opacity="0.9" />
+            </linearGradient>
+        </defs>
+        <ellipse class="bg-shape" cx="85%" cy="8%" rx="260" ry="120" fill="url(#g1)" />
+        <ellipse class="bg-shape" cx="5%" cy="88%" rx="220" ry="90" fill="#4162ff" />
+        <ellipse class="bg-shape" cx="50%" cy="12%" rx="160" ry="80" fill="#3b82f6" />
+
+        <polygon class="bg-shape" points="20,70 60,40 80,80 40,110" fill="#2b6ef6"
+            transform="translate(120,60) rotate(-18)" />
+        <polygon class="bg-shape" points="0,0 40,0 20,34" fill="#6b8cff" transform="translate(600,200) rotate(26)" />
+
+        <g id="stars" fill="#fff">
+            <circle class="star slow d1" cx="8%" cy="10%" r="1.6" />
+            <circle class="star fast d2" cx="18%" cy="28%" r="1.2" />
+            <circle class="star d3" cx="30%" cy="6%" r="1.1" />
+            <circle class="star slow d4" cx="72%" cy="20%" r="1.8" />
+            <circle class="star fast d5" cx="88%" cy="36%" r="1.3" />
+            <circle class="star d6" cx="60%" cy="6%" r="1.0" />
+            <circle class="star slow d2" cx="12%" cy="72%" r="1.4" />
+            <circle class="star fast d4" cx="40%" cy="86%" r="1.2" />
+            <circle class="star d1" cx="82%" cy="76%" r="1.6" />
+        </g>
+    </svg>
+    <div id="cursorTrail"></div>
+    <nav>
+        <div class="nav-left">
+            <img src="Status_Bot_Logo.png" alt="Logo" />
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/commands">Commands</a>
+                <a href="/premium">Premium</a>
+                <a href="https://discord.gg/Kd2MckVxED">Support</a>
+                <a
+                    href="https://discord.com/oauth2/authorize?client_id=1436123870158520411&permissions=8&scope=bot%20applications.commands">Invite</a>
+            </div>
+        </div>
+
+        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+
+        <div class="dropdown" id="dropdown">
+            <button class="username-btn" id="userBtn">Login</button>
+            <div class="dropdown-content" id="dropdownMenu">
+                <a href="/settings" id="settings" style="display:none;">
+                    <i class="fas fa-cog"></i> Settings</a>
+                <a href="#" id="logout" style="display:none;">
+                    <i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="/">Home</a>
+            <a href="/commands">Commands</a>
+            <a href="/premium">Premium</a>
+            <a href="https://discord.gg/Kd2MckVxED">Support</a>
+            <a
+                href="https://discord.com/oauth2/authorize?client_id=1436123870158520411&permissions=8&scope=bot%20applications.commands">Invite</a>
+            <button class="mobile-login" id="mobileLogin">Login</button>
+        </div>
+    </nav>
+
+    <section class="commands-container">
+        <h1 class="commands-title">Bot Commands</h1>
+        <div class="category-tabs">
+            <button class="category-tab active" data-category="status">Status</button>
+            <button class="category-tab" data-category="moderation">Moderation</button>
+            <button class="category-tab" data-category="misc">Misc</button>
+            <button class="category-tab" data-category="giveaway">Giveaway</button>
+            <button class="category-tab" data-category="premium">Premium</button>
+            <button class="category-tab" data-category="leveling">Leveling</button>
+            <button class="category-tab" data-category="welcome">Welcome</button>
+        </div>
+        <div class="separator-line"></div>
+        <div class="commands-box" id="commandsBox"></div>
+    </section>
+
+    <script>
+        const dropdown = document.getElementById("dropdown"),
+            userBtn = document.getElementById("userBtn"),
+            dropdownMenu = document.getElementById("dropdownMenu"),
+            logoutLink = document.getElementById("logout"),
+            menuToggle = document.getElementById("menuToggle"),
+            mobileMenu = document.getElementById("mobileMenu"),
+            mobileLogin = document.getElementById("mobileLogin");
+
+        const DISCORD_CLIENT_ID = "1436123870158520411",
+            REDIRECT_URI = "https://status-bot.xyz/commands",
+            DISCORD_API = "https://discord.com/api/users/@me",
+            OAUTH_URL = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify`;
+
+        let dropdownTimeout, chevron = null;
+
+        dropdown.addEventListener("mouseenter", () => {
+            clearTimeout(dropdownTimeout);
+            dropdownMenu.classList.add("show");
+            if (chevron) chevron.style.transform = "rotate(180deg)";
+        });
+
+        dropdown.addEventListener("mouseleave", () => {
+            dropdownTimeout = setTimeout(() => {
+                dropdownMenu.classList.remove("show");
+                if (chevron) chevron.style.transform = "rotate(0deg)";
+            }, 150);
+        });
+
+        window.addEventListener("click", e => {
+            if (!dropdown.contains(e.target)) dropdownMenu.classList.remove("show");
+        });
+
+        menuToggle.addEventListener("click", () => {
+            mobileMenu.classList.toggle("show");
+            menuToggle.innerHTML = mobileMenu.classList.contains("show") ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+        });
+
+        function getAccessToken() {
+            const hash = window.location.hash;
+            if (!hash) return null;
+            const params = new URLSearchParams(hash.substring(1));
+            return params.get("access_token");
+        }
+
+        async function fetchDiscordUser(token) {
+            const res = await fetch(DISCORD_API, { headers: { Authorization: `Bearer ${token}` } });
+            if (!res.ok) throw new Error("Failed to fetch user");
+            return res.json();
+        }
+
+        function updateUserUI(user) {
+            const avatar = user.avatar
+                ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
+                : `https://cdn.discordapp.com/embed/avatars/${user.discriminator % 5}.png`;
+
+            userBtn.innerHTML = `<img src="${avatar}" alt="${user.username}"> ${user.username} <i class='fas fa-chevron-down' id='chevron'></i>`;
+            chevron = document.getElementById("chevron");
+
+            const settingsLink = document.getElementById("settings");
+            if (settingsLink) settingsLink.style.display = "block";
+
+            logoutLink.style.display = "block";
+            logoutLink.onclick = (ev) => {
+                ev.preventDefault();
+                localStorage.removeItem("discord_token");
+                window.location.href = "/";
+            };
+
+            if (mobileLogin) {
+                mobileLogin.textContent = user.username;
+                mobileLogin.style.cursor = "default";
+            }
+        }
+
+
+        function setLoginButtons() {
+            userBtn.onclick = () => window.location.href = OAUTH_URL;
+            if (mobileLogin) mobileLogin.onclick = () => window.location.href = OAUTH_URL;
+        }
+
+        async function init() {
+            let token = getAccessToken();
+            if (token) {
+                localStorage.setItem("discord_token", token);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                token = localStorage.getItem("discord_token");
+            }
+            if (!token) { setLoginButtons(); return }
+            try { const user = await fetchDiscordUser(token); updateUserUI(user) } catch (e) { localStorage.removeItem("discord_token"); setLoginButtons() }
+        }
+
+        init();
+
+        const commands = {
+            status: [
+                { name: "/set", usage: "/set" },
+                { name: "/status", usage: "/status" },
+            ],
+            moderation: [
+                { name: "/mute", usage: "/mute" },
+                { name: "/unmute", usage: "/unmute" },
+                { name: "/warn", usage: "/warn" },
+                { name: "/warnings", usage: "/warnings" },
+                { name: "/remove_warn", usage: "/remove_warn" },
+                { name: "/purge", usage: "/purge" },
+                { name: "/ban", usage: "/ban" },
+                { name: "/unban", usage: "/unban" },
+                { name: "/auditlog", usage: "/auditlog" },
+                { name: "/antinuke", usage: "/antinuke" }
+            ],
+            misc: [
+                { name: "/help", usage: "/help" },
+                { name: "/stats", usage: "/stats" },
+                { name: "/cache", usage: "/cache" },
+                { name: "/invite", usage: "/invite" },
+                { name: "/info", usage: "/info" },
+            ],
+            giveaway: [
+                { name: "/giveaway", usage: "/giveaway" },
+                { name: "/reroll", usage: "/reroll" },
+            ],
+            premium: [
+                { name: "/gift", usage: "/gift" },
+                { name: "/generate", usage: "/generate" },
+                { name: "/redeem", usage: "/redeem" },
+            ],
+            leveling: [
+                { name: "/xp_toggle", usage: "/xp_toggle" },
+                { name: "/xp_setup", usage: "/xp_setup" },
+                { name: "/level", usage: "/level" },
+                { name: "/leaderboard", usage: "/leaderboard" },
+                { name: "/give", usage: "/give" },
+                { name: "/take", usage: "/take" },
+                { name: "/balance", usage: "/balance" },
+            ],
+            welcome: [
+                { name: "/welcome", usage: "/welcome" },
+                { name: "/member_count", usage: "/member_count" },
+            ],
+        };
+
+        const commandsBox = document.getElementById("commandsBox");
+        const tabs = document.querySelectorAll(".category-tab");
+
+        function renderCommands(category) {
+            commandsBox.innerHTML = "";
+            commands[category].forEach((cmd) => {
+                const div = document.createElement("div");
+                div.className = "command-card";
+                div.innerHTML = `<h3>${cmd.name}</h3><code>${cmd.usage}</code>`;
+                commandsBox.appendChild(div);
+            });
+        }
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                tabs.forEach((t) => t.classList.remove("active"));
+                tab.classList.add("active");
+                renderCommands(tab.dataset.category);
+            });
+        });
+
+        renderCommands("status");
+    </script>
+
+    <footer class="site-footer">
+        <div class="footer-top">
+            <div class="footer-left"><span class="footer-logo">Status Bot</span></div>
+            <div class="footer-right"><a href="/terms">Terms</a> <span class="sep">|</span> <a
+                    href="/privacy">Privacy</a> <span class="sep">|</span> <a
+                    href="https://discord.gg/Kd2MckVxED">Support</a></div>
+        </div>
+        <div class="footer-bottom">© 2025 Status Bot. All rights reserved.</div>
+    </footer>
+    <script>
+        const THEME_KEY = "site_theme";
+
+        const themes = {
+            "sunset": () => {
+                document.documentElement.style.setProperty('--page-bg', '#0f0b12');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(255,160,90,0.12)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(130,70,180,0.18)');
+            },
+
+            "obsidian": () => {
+                document.documentElement.style.setProperty('--page-bg', '#0b0b0b');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(40,40,40,0.08)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(80,80,80,0.06)');
+            },
+
+            "saphire": () => {
+                document.documentElement.style.setProperty('--page-bg', '#071027');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(0,180,255,0.06)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(10,40,180,0.12)');
+            },
+
+            "parrot": () => {
+                document.documentElement.style.setProperty('--page-bg', '#071a16');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(50,230,170,0.06)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(0,180,140,0.08)');
+            },
+
+            "icicle": () => {
+                document.documentElement.style.setProperty('--page-bg', '#071221');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(160,240,255,0.06)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(120,200,255,0.08)');
+            },
+
+            "lime": () => {
+                document.documentElement.style.setProperty('--page-bg', '#0b1410');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(180,255,120,0.08)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(120,220,80,0.06)');
+            },
+
+            "light": () => {
+                document.documentElement.style.setProperty('--page-bg', '#f6f7fb');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(65,98,255,0.03)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(65,98,255,0.02)');
+            },
+
+            "default": () => {
+                document.documentElement.style.setProperty('--page-bg', '#141414');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(65,98,255,0.06)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(65,98,255,0.18)');
+            },
+
+            "dark": () => {
+                document.documentElement.style.setProperty('--page-bg', '#0f0f10');
+                document.documentElement.style.setProperty('--bg-1', 'rgba(0,0,0,0.06)');
+                document.documentElement.style.setProperty('--bg-2', 'rgba(0,0,0,0.04)');
+            }
+        };
+
+        function applyTheme(name) {
+            const fn = themes[name] || themes["default"];
+            fn();
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem(THEME_KEY) || "default";
+            applyTheme(saved);
+        }
+
+        initTheme();
+    </script>
+</body>
+
+</html>

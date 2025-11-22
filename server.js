@@ -41,7 +41,7 @@ function generateKey(duration, userId) {
 // Get gifts for a user
 app.get('/api/gifts', (req, res) => {
     const userId = req.query.userId;
-    // For demo, all gifts are visible to all users
+    // Gifts are visible to all users until claimed
     const userGifts = gifts.filter(g => !claimed[g.id]?.includes(userId));
     res.json(userGifts);
 });
@@ -50,9 +50,9 @@ app.get('/api/gifts', (req, res) => {
 app.post('/api/gifts/send', (req, res) => {
     const { userId, duration } = req.body;
     if (userId !== DEVELOPER_ID) return res.status(403).json({ error: 'Forbidden' });
-    // Remove any previous unclaimed gifts of same type
+    // Remove any previous unclaimed gifts of same type sent by developer
     gifts = gifts.filter(g => !(g.title === `Free Premium Trial (${duration})` && g.sent_by === userId));
-    // Add a new gift for all users
+    // Add a new gift visible to all users until claimed
     const id = uuidv4();
     gifts.push({
         id,

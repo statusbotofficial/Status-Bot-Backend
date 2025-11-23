@@ -34,7 +34,6 @@ async function sendKeyToBotAPI(keyData) {
     }
 }
 
-
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -146,3 +145,4 @@ app.get('/api/notifications', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Backend running on http://localhost:${PORT}`);
 });
+

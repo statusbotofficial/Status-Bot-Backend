@@ -1,4 +1,3 @@
-// Save notification to notifications.json
 function saveNotification({ userId, duration }) {
     const filePath = path.join(__dirname, '..', 'notifications.json');
     let notifications = [];
@@ -24,16 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 const PORT = 3001;
-const axios = require('axios');
-async function sendKeyToBotAPI(keyData) {
-    const BOT_API_URL = 'https://your-bot.discloud.app/api/premium_key';
-    try {
-        await axios.post(BOT_API_URL, keyData);
-        console.log('Key sent to bot API:', keyData.key);
-    } catch (err) {
-        console.error('Failed to send key to bot API:', err.message);
-    }
-}
+
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -116,18 +106,6 @@ app.post('/api/gifts/claim', async (req, res) => {
     const keyData = generateKey(gift.duration, userId);
     savePremiumKey(keyData, userId);
         saveNotification({ userId: DEVELOPER_ID, duration: gift.duration });
-    await sendKeyToBotAPI({
-        key: keyData.key,
-        generated_by: userId,
-        used: false,
-        scope: keyData.scope,
-        created_at: keyData.created_at,
-        expires_at: keyData.expires_at,
-        redeemed_by: null,
-        redeemed_at: null,
-        gifted_to: null,
-        gifted_from: null
-    });
     res.json({ key: keyData.key, expires_at: keyData.expires_at });
 });
 app.get('/api/notifications', (req, res) => {

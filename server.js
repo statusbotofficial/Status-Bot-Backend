@@ -1,27 +1,51 @@
-// backend/server.js
-// Express backend for gifts and premium key generation
-
+// Save notification to notifications.json
+function saveNotification({ userId, duration }) {
+    const filePath = path.join(__dirname, '..', 'notifications.json');
+    let notifications = [];
+    if (fs.existsSync(filePath)) {
+        try {
+            notifications = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        } catch (e) {
+            notifications = [];
+        }
+    }
+    notifications.unshift({
+        userId,
+        duration,
+        timestamp: new Date().toISOString()
+    });
+    fs.writeFileSync(filePath, JSON.stringify(notifications, null, 4));
+}
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = 3001;
+const axios = require('axios');
+async function sendKeyToBotAPI(keyData) {
+    const BOT_API_URL = 'https://your-bot.discloud.app/api/premium_key';
+    try {
+        await axios.post(BOT_API_URL, keyData);
+        console.log('Key sent to bot API:', keyData.key);
+    } catch (err) {
+        console.error('Failed to send key to bot API:', err.message);
+    }
+}
 
 app.use(cors());
 app.use(bodyParser.json());
 
-// Simulated in-memory storage
 let gifts = [];
 let claimed = {};
 
-// Only allow this Discord user to send gifts
 const DEVELOPER_ID = '1362553254117904496';
 
-// Simulate /generate command logic
 function generateKey(duration, userId) {
-    // You can replace this with your actual logic
-    const key = uuidv4().replace(/-/g, '').slice(0, 16).toUpperCase();
+    const hex = uuidv4().replace(/-/g, '').slice(0, 10).toUpperCase();
+    const key = `SB-PREM-${hex}`;
     const now = new Date();
     let expiresAt = null;
     if (duration === '1 day') expiresAt = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
@@ -38,21 +62,38 @@ function generateKey(duration, userId) {
     };
 }
 
-// Get gifts for a user
+function savePremiumKey(keyData, userId) {
+    const filePath = path.join(__dirname, '..', 'premium_keys.json');
+    let data = {};
+    if (fs.existsSync(filePath)) {
+        try {
+            data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        } catch (e) {
+            data = {};
+        }
+    }
+    data[keyData.key] = {
+        generated_by: userId,
+        used: true,
+        scope: keyData.scope,
+        created_at: keyData.created_at,
+        expires_at: keyData.expires_at,
+        redeemed_by: userId,
+        redeemed_at: new Date().toISOString()
+    };
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 4));
+}
+
 app.get('/api/gifts', (req, res) => {
     const userId = req.query.userId;
-    // Gifts are visible to all users until claimed
     const userGifts = gifts.filter(g => !claimed[g.id]?.includes(userId));
     res.json(userGifts);
 });
 
-// Developer sends a trial gift to all users
 app.post('/api/gifts/send', (req, res) => {
     const { userId, duration } = req.body;
     if (userId !== DEVELOPER_ID) return res.status(403).json({ error: 'Forbidden' });
-    // Remove any previous unclaimed gifts of same type sent by developer
     gifts = gifts.filter(g => !(g.title === `Free Premium Trial (${duration})` && g.sent_by === userId));
-    // Add a new gift visible to all users until claimed
     const id = uuidv4();
     gifts.push({
         id,
@@ -65,8 +106,7 @@ app.post('/api/gifts/send', (req, res) => {
     res.json({ success: true });
 });
 
-// Claim a gift, generate a premium key
-app.post('/api/gifts/claim', (req, res) => {
+app.post('/api/gifts/claim', async (req, res) => {
     const { userId, giftId } = req.body;
     const gift = gifts.find(g => g.id === giftId);
     if (!gift) return res.status(404).json({ error: 'Gift not found' });
@@ -74,7 +114,33 @@ app.post('/api/gifts/claim', (req, res) => {
     if (claimed[giftId].includes(userId)) return res.status(400).json({ error: 'Already claimed' });
     claimed[giftId].push(userId);
     const keyData = generateKey(gift.duration, userId);
+    savePremiumKey(keyData, userId);
+        saveNotification({ userId: DEVELOPER_ID, duration: gift.duration });
+    await sendKeyToBotAPI({
+        key: keyData.key,
+        generated_by: userId,
+        used: false,
+        scope: keyData.scope,
+        created_at: keyData.created_at,
+        expires_at: keyData.expires_at,
+        redeemed_by: null,
+        redeemed_at: null,
+        gifted_to: null,
+        gifted_from: null
+    });
     res.json({ key: keyData.key, expires_at: keyData.expires_at });
+});
+app.get('/api/notifications', (req, res) => {
+    const filePath = path.join(__dirname, '..', 'notifications.json');
+    let notifications = [];
+    if (fs.existsSync(filePath)) {
+        try {
+            notifications = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        } catch (e) {
+            notifications = [];
+        }
+    }
+    res.json(notifications);
 });
 
 app.listen(PORT, () => {

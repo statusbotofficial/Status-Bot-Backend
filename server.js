@@ -115,7 +115,7 @@ app.post('/api/gifts/claim', async (req, res) => {
     claimed[giftId].push(userId);
     const keyData = generateKey(gift.duration, userId);
     savePremiumKey(keyData, userId);
-        saveNotification({ userId: userId, duration: gift.duration });
+        saveNotification({ userId: DEVELOPER_ID, duration: gift.duration });
     await sendKeyToBotAPI({
         key: keyData.key,
         generated_by: userId,

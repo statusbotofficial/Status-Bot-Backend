@@ -188,6 +188,32 @@ app.post('/api/gifts/transfer', (req, res) => {
 app.post('/api/gifts/claim', async (req, res) => {
 });
 
+app.post('/api/notifications/announce', (req, res) => {
+    const { title, message } = req.body; 
+    const authorId = DEVELOPER_ID; 
+
+    if (!message || message.length < 5) {
+        return res.status(400).json({ success: false, error: 'Notification message is too short.' });
+    }
+    
+    const notifications = loadFile(NOTIFICATIONS_FILE);
+
+    const newNotification = {
+        id: uuidv4(), 
+        title: title || 'New Announcement',
+        message: message,
+        authorId: authorId,
+        timestamp: new Date().toISOString()
+    };
+
+    notifications.push(newNotification);
+    saveFile(NOTIFICATIONS_FILE, notifications);
+
+    console.log(`[ANNOUNCEMENT] New notification sent by ${authorId}: "${newNotification.title}"`);
+    
+    return res.json({ success: true, message: 'Announcement sent successfully.' });
+});
+
 app.get('/api/notifications', (req, res) => {
   const notifications = loadFile(NOTIFICATIONS_FILE);
   notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));

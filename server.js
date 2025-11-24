@@ -189,29 +189,17 @@ app.post('/api/gifts/claim', async (req, res) => {
 });
 
 app.post('/api/notifications/announce', (req, res) => {
-
     const { userId, message } = req.body;
-
     if (userId !== DEVELOPER_ID) {
-
         return res.status(403).json({ error: 'Forbidden' });
-
     }
-
     
-
     if (!message || message.length < 5) {
-
         return res.status(400).json({ error: 'Notification message is too short.' });
-
     }
-
     
-
     saveSiteAnnouncement(message);
-
     res.json({ success: true, message: 'Announcement sent successfully.' });
-
 });
 
 app.get('/api/notifications', (req, res) => {
@@ -223,4 +211,5 @@ app.get('/api/notifications', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
 

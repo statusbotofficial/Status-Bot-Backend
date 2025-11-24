@@ -7,19 +7,15 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 const axios = require('axios');
-
-// --- Configuration ---
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
 const DEVELOPER_ID = "1362553254117904496"; 
 const SITE_WIDE_GIFT_FILE = path.join(__dirname, '..', 'site_wide_gift.json'); 
-// ---------------------
 
-// Middleware
+
 app.use(cors());
 app.use(bodyParser.json());
 
-// --- Helper Functions for Data Persistence ---
 
 function loadFile(filePath) {
     if (fs.existsSync(filePath)) {
@@ -62,9 +58,7 @@ function saveSiteAnnouncement(message) {
     });
 }
 
-// --- Trial Code Logic ---
 const TRIAL_CODE_MAP = {
-    // FIXED: Keys use 'D' or 'M' suffix for consistency
     "1D": ["COOKIE", "PAPER", "STATUS", "PLANE", "BRICK", "CLOUD", "STONE", "RIVER", "METAL", "LEAF"],
     "3D": ["TOWER", "LIGHT", "OCEAN", "TRAIN", "CABLE", "GLASS", "FIELD", "STORM", "BRIDGE", "FLAME"],
     "7D": ["CASTLE", "ROCKET", "SIGNAL", "CIRCLE", "TRACK", "WOODS", "SHELL", "CRANE", "BLADE", "HORSE"],
@@ -81,9 +75,6 @@ function generateTrialCode(duration) {
     return `SB-TRIAL-${duration}-${secret}`;
 }
 
-// =========================================================================
-// --- NEW API endpoint for sending Trial Membership (Gift Creation) ---
-// =========================================================================
 app.post('/api/trials/send', (req, res) => {
     const { developerId, targetUserId, duration } = req.body; 
 
@@ -91,18 +82,15 @@ app.post('/api/trials/send', (req, res) => {
         return res.status(403).json({ success: false, error: 'Forbidden. Only the authorized developer can send trials.' });
     }
     
-    // 1. Validate Duration
     const validDurations = Object.keys(TRIAL_CODE_MAP); 
     if (!validDurations.includes(duration)) {
         return res.status(400).json({ success: false, error: 'Invalid trial duration.' });
     }
 
-    // 2. Handle Site-Wide Gift (for 'all' or 'everyone')
     if (targetUserId === 'all' || targetUserId === 'everyone') {
         const siteWideGift = loadFile(SITE_WIDE_GIFT_FILE);
         siteWideGift.code = generateTrialCode(duration);
         siteWideGift.duration = duration;
-        // Logic to save site-wide key goes here...
         saveFile(SITE_WIDE_GIFT_FILE, siteWideGift);
         saveNotification({
             userId: 'System', 
@@ -112,7 +100,6 @@ app.post('/api/trials/send', (req, res) => {
         return res.json({ success: true, message: `Site-wide trial updated. Code: ${siteWideGift.code}`, code: siteWideGift.code });
     }
 
-    // 3. Handle Private Gift (for specific user ID)
     if (!targetUserId.match(/^\d{16,20}$/)) { 
         return res.status(400).json({ success: false, error: 'Invalid target user ID.' });
     }
@@ -128,7 +115,6 @@ app.post('/api/trials/send', (req, res) => {
         gifts[targetUserId] = [];
     }
 
-    // Save the new gift to the user's list
     gifts[targetUserId].push({
         code: code,
         duration: duration,
@@ -141,11 +127,7 @@ app.post('/api/trials/send', (req, res) => {
     return res.json({ success: true, message: 'Trial sent successfully.', code: code });
 });
 
-// =========================================================================
-// --- NEW API endpoint for fetching a user's private gifts (Gift Retrieval) ---
-// =========================================================================
 app.get('/api/gifts/user', (req, res) => {
-    // NOTE: Replace this mock user ID with a secure method of getting the logged-in user's ID
     const userId = req.query.userId || DEVELOPER_ID; 
 
     if (!userId.match(/^\d{16,20}$/)) {
@@ -154,26 +136,59 @@ app.get('/api/gifts/user', (req, res) => {
 
     const gifts = loadFile(GIFTS_FILE);
     
-    // Return only the UNREDEEMED gifts
     const userGifts = gifts[userId] || [];
     const unredeemedGifts = userGifts.filter(g => !g.redeemed);
     
     res.json({ success: true, gifts: unredeemedGifts });
 });
 
-// --- Existing /api/gifts/claim endpoint (Kept for context) ---
-app.post('/api/gifts/claim', async (req, res) => {
-    // ... (Existing claim logic)
+app.post('/api/gifts/transfer', (req, res) => {
+    const { giverId, recipientId, giftCode } = req.body;
+
+    if (!giverId || !recipientId || !giftCode) {
+        return res.status(400).json({ success: false, error: 'Missing giverId, recipientId, or giftCode.' });
+    }
+    if (!recipientId.match(/^\d{16,20}$/)) { 
+        return res.status(400).json({ success: false, error: 'Invalid recipient User ID.' });
+    }
+    if (giverId === recipientId) {
+        return res.status(400).json({ success: false, error: 'You cannot gift a code to yourself.' });
+    }
+
+    const gifts = loadFile(GIFTS_FILE);
+
+    if (!gifts[giverId]) {
+        return res.status(404).json({ success: false, error: 'You do not have any gifts to send.' });
+    }
+
+    const giftIndex = gifts[giverId].findIndex(g => g.code === giftCode && !g.redeemed);
+
+    if (giftIndex === -1) {
+        return res.status(404).json({ success: false, error: 'This gift code was not found in your account or has already been redeemed.' });
+    }
+
+    const [giftToTransfer] = gifts[giverId].splice(giftIndex, 1);
+    
+    if (!gifts[recipientId]) {
+        gifts[recipientId] = [];
+    }
+    gifts[recipientId].push(giftToTransfer);
+
+    saveFile(GIFTS_FILE, gifts);
+
+    console.log(`[GIFT TRANSFER] User ${giverId} sent ${giftToTransfer.code} to ${recipientId}`);
+    return res.json({ success: true, message: `Successfully gifted ${giftToTransfer.duration} trial to user ${recipientId}!`});
 });
 
-// --- MODIFIED: The GET notifications endpoint now returns all notifications ---
+app.post('/api/gifts/claim', async (req, res) => {
+});
+
 app.get('/api/notifications', (req, res) => {
   const notifications = loadFile(NOTIFICATIONS_FILE);
   notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   res.json(notifications);
 });
 
-// Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

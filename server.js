@@ -7,11 +7,11 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 const axios = require('axios');
+
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
 const DEVELOPER_ID = "1362553254117904496"; 
 const SITE_WIDE_GIFT_FILE = path.join(__dirname, '..', 'site_wide_gift.json'); 
-
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -155,29 +155,34 @@ app.post('/api/gifts/transfer', (req, res) => {
         return res.status(400).json({ success: false, error: 'You cannot gift a code to yourself.' });
     }
 
+    if (!giftCode.startsWith('SB-PREM-') || giftCode.length !== 18) {
+        return res.status(400).json({ success: false, error: 'Invalid Premium Code format. Must be 18 characters and start with SB-PREM-.' });
+    }
+
     const gifts = loadFile(GIFTS_FILE);
 
-    if (!gifts[giverId]) {
-        return res.status(404).json({ success: false, error: 'You do not have any gifts to send.' });
-    }
-
-    const giftIndex = gifts[giverId].findIndex(g => g.code === giftCode && !g.redeemed);
-
-    if (giftIndex === -1) {
-        return res.status(404).json({ success: false, error: 'This gift code was not found in your account or has already been redeemed.' });
-    }
-
-    const [giftToTransfer] = gifts[giverId].splice(giftIndex, 1);
+    const giftToTransfer = {
+        code: giftCode,
+        duration: "Premium Access",
+        redeemed: false,
+        sent_at: new Date().toISOString(),
+        gifted_by: giverId
+    };
     
     if (!gifts[recipientId]) {
         gifts[recipientId] = [];
     }
+    
+    if (gifts[recipientId].some(g => g.code === giftCode)) {
+        return res.status(400).json({ success: false, error: 'This user already has this exact gift code.' });
+    }
+
     gifts[recipientId].push(giftToTransfer);
 
     saveFile(GIFTS_FILE, gifts);
 
     console.log(`[GIFT TRANSFER] User ${giverId} sent ${giftToTransfer.code} to ${recipientId}`);
-    return res.json({ success: true, message: `Successfully gifted ${giftToTransfer.duration} trial to user ${recipientId}!`});
+    return res.json({ success: true, message: `Successfully gifted "Premium Access" to user ${recipientId}!`});
 });
 
 app.post('/api/gifts/claim', async (req, res) => {

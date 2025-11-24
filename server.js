@@ -199,12 +199,13 @@ app.post('/api/notifications/announce', (req, res) => {
     const notifications = loadFile(NOTIFICATIONS_FILE);
 
     const newNotification = {
-        id: uuidv4(), 
-        title: title || 'New Announcement',
-        message: message,
-        authorId: authorId,
-        timestamp: new Date().toISOString()
-    };
+            id: uuidv4(), 
+            type: 'announcement',
+            title: title || 'New Announcement',
+            message: message,
+            userId: authorId,
+            timestamp: new Date().toISOString()
+        };
 
     notifications.push(newNotification);
     saveFile(NOTIFICATIONS_FILE, notifications);

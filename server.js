@@ -189,17 +189,29 @@ app.post('/api/gifts/claim', async (req, res) => {
 });
 
 app.post('/api/notifications/announce', (req, res) => {
-    const { userId, message } = req.body;
-    if (userId !== DEVELOPER_ID) {
-        return res.status(403).json({ error: 'Forbidden' });
-    }
-    
+    const { title, message } = req.body; 
+    const authorId = DEVELOPER_ID; 
+
     if (!message || message.length < 5) {
-        return res.status(400).json({ error: 'Notification message is too short.' });
+        return res.status(400).json({ success: false, error: 'Notification message is too short.' });
     }
     
-    saveSiteAnnouncement(message);
-    res.json({ success: true, message: 'Announcement sent successfully.' });
+    const notifications = loadFile(NOTIFICATIONS_FILE);
+
+    const newNotification = {
+        id: uuidv4(), 
+        title: title || 'New Announcement',
+        message: message,
+        authorId: authorId,
+        timestamp: new Date().toISOString()
+    };
+
+    notifications.push(newNotification);
+    saveFile(NOTIFICATIONS_FILE, notifications);
+
+    console.log(`[ANNOUNCEMENT] New notification sent by ${authorId}: "${newNotification.title}"`);
+    
+    return res.json({ success: true, message: 'Announcement sent successfully.' });
 });
 
 app.get('/api/notifications', (req, res) => {
@@ -208,8 +220,60 @@ app.get('/api/notifications', (req, res) => {
   res.json(notifications);
 });
 
+function saveNotification({ userId, duration, type, message }) {
+    const notifications = loadFile(NOTIFICATIONS_FILE);
+    
+    notifications.push({
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        userId: userId,
+        duration: duration,
+        type: type || 'claim',
+        message: message
+    });
+    
+    saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); 
+}
+
+app.post('/api/notifications/delete-last', (req, res) => {
+    const { developerId } = req.body;
+    
+    if (developerId !== DEVELOPER_ID) {
+        return res.status(403).json({ success: false, error: 'Forbidden.' });
+    }
+
+    let notifications = loadFile(NOTIFICATIONS_FILE);
+    
+    let indexToRemove = -1;
+    for (let i = notifications.length - 1; i >= 0; i--) {
+        if (notifications[i].type === 'announcement') {
+            indexToRemove = i;
+            break;
+        }
+    }
+
+    if (indexToRemove !== -1) {
+        const removed = notifications.splice(indexToRemove, 1);
+        saveFile(NOTIFICATIONS_FILE, notifications);
+        return res.json({ success: true, message: `Removed announcement: "${removed[0].message}"` });
+    } else {
+        return res.status(404).json({ success: false, error: 'No announcements found to remove.' });
+    }
+});
+
+app.post('/api/trials/clear-global', (req, res) => {
+    const { developerId } = req.body;
+
+    if (developerId !== DEVELOPER_ID) {
+        return res.status(403).json({ success: false, error: 'Forbidden.' });
+    }
+
+    const resetData = { code: null, duration: null };
+    saveFile(SITE_WIDE_GIFT_FILE, resetData);
+
+    return res.json({ success: true, message: 'Global trial has been removed.' });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-
-

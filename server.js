@@ -275,7 +275,14 @@ app.get('/api/notifications', (req, res) => {
             console.log('[HEARTBEAT] Resending persistent announcement.');
             
             // Re-use the logic from your /announce endpoint to post the message
-            const notifications = loadFile(NOTIFICATIONS_FILE);
+            let notifications = loadFile(NOTIFICATIONS_FILE); // <-- *** MODIFIED: Changed to 'let' ***
+            
+            // --- *** NEW: Filter out the previous repeating announcement *** ---
+            notifications = notifications.filter(n => {
+                return !(n.type === 'announcement' && n.message === persistentData.message);
+            });
+            // --- *** END NEW *** ---
+
             const newNotification = {
                 id: uuidv4(), 
                 type: 'announcement',
@@ -339,7 +346,7 @@ app.post('/api/notifications/delete-last', (req, res) => {
 
         return res.json({ success: true, message: `Removed announcement: "${removed[0].message}"` });
     } else {
-        return res.status(404).json({ success: false, error: 'No announcements found to remove.' });
+        return res.status(4DEN).json({ success: false, error: 'No announcements found to remove.' });
     }
 });
 

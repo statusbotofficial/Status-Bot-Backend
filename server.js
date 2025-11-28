@@ -12,9 +12,29 @@ const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
 const DEVELOPER_ID = "1362553254117904496"; 
 const SITE_WIDE_GIFT_FILE = path.join(__dirname, '..', 'site_wide_gift.json'); 
+const PERSISTENT_ANNOUNCEMENT_FILE = path.join(__dirname, '..', 'persistent_announcement.json'); // ADDED
 
 app.use(cors());
 app.use(bodyParser.json());
+
+
+// --- ADDED NEW HELPER FUNCTIONS ---
+function loadPersistentAnnouncement() {
+    if (fs.existsSync(PERSISTENT_ANNOUNCEMENT_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(PERSISTENT_ANNOUNCEMENT_FILE, 'utf8'));
+        } catch (e) {
+            console.error('Error reading persistent announcement:', e);
+        }
+    }
+    // Default structure if file doesn't exist
+    return { message: null, lastSent: null, isActive: false };
+}
+
+function savePersistentAnnouncement(data) {
+    saveFile(PERSISTENT_ANNOUNCEMENT_FILE, data);
+}
+// --- END OF NEW HELPER FUNCTIONS ---
 
 
 function loadFile(filePath) {
@@ -37,17 +57,21 @@ function saveFile(filePath, data) {
     }
 }
 
+// --- MOVED AND FIXED saveNotification FUNCTION ---
+// (The first, simpler version was deleted)
 function saveNotification({ userId, duration, type, message }) {
     const notifications = loadFile(NOTIFICATIONS_FILE);
     
     notifications.push({
+        id: uuidv4(),
         timestamp: new Date().toISOString(),
         userId: userId,
         duration: duration,
         type: type || 'claim',
         message: message
     });
-    saveFile(NOTIFICATIONS_FILE, notifications.slice(-100));
+    
+    saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); 
 }
 
 function saveSiteAnnouncement(message) {
@@ -189,7 +213,7 @@ app.post('/api/gifts/claim', async (req, res) => {
 });
 
 app.post('/api/notifications/announce', (req, res) => {
-    const { title, message } = req.body; 
+    const { title, message, isPersistent } = req.body; // MODIFIED
     const authorId = DEVELOPER_ID; 
 
     if (!message || message.length < 5) {
@@ -208,33 +232,78 @@ app.post('/api/notifications/announce', (req, res) => {
         };
 
     notifications.push(newNotification);
-    saveFile(NOTIFICATIONS_FILE, notifications);
+    saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); // MODIFIED
 
-    console.log(`[ANNOUNCEMENT] New notification sent by ${authorId}: "${newNotification.title}"`);
+    // --- BEGIN MODIFIED LOGIC ---
+    if (isPersistent) {
+        // If 'isPersistent' is true, save it to our new state file
+        savePersistentAnnouncement({
+            message: message,
+            lastSent: newNotification.timestamp,
+            isActive: true
+        });
+        console.log(`[ANNOUNCEMENT] New *persistent* notification set by ${authorId}`);
+    } else {
+        // If a *non-persistent* announcement is sent, 
+        // we should *clear* any existing persistent one.
+        const persistentData = loadPersistentAnnouncement();
+        if (persistentData.isActive) {
+            persistentData.isActive = false;
+            persistentData.message = null;
+            savePersistentAnnouncement(persistentData);
+            console.log('[ANNOUNCEMENT] Cleared previous persistent notification.');
+        }
+        console.log(`[ANNOUNCEMENT] New notification sent by ${authorId}: "${newNotification.title}"`);
+    }
+    // --- END MODIFIED LOGIC ---
     
     return res.json({ success: true, message: 'Announcement sent successfully.' });
 });
 
 app.get('/api/notifications', (req, res) => {
+  // --- BEGIN NEW REPEATER LOGIC ---
+  try {
+    const persistentData = loadPersistentAnnouncement();
+    const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+
+    if (persistentData.isActive && persistentData.message) {
+        const lastSentTime = persistentData.lastSent ? new Date(persistentData.lastSent).getTime() : 0;
+        const now = Date.now();
+
+        // Check if 15 minutes have passed
+        if (now - lastSentTime > FIFTEEN_MINUTES_MS) {
+            console.log('[HEARTBEAT] Resending persistent announcement.');
+            
+            // Re-use the logic from your /announce endpoint to post the message
+            const notifications = loadFile(NOTIFICATIONS_FILE);
+            const newNotification = {
+                id: uuidv4(), 
+                type: 'announcement',
+                title: 'Announcement (Repeating)', // Give it a clear title
+                message: persistentData.message,
+                userId: DEVELOPER_ID,
+                timestamp: new Date().toISOString()
+            };
+            
+            notifications.push(newNotification);
+            saveFile(NOTIFICATIONS_FILE, notifications.slice(-500));
+
+            // IMPORTANT: Update the 'lastSent' time in our state file
+            persistentData.lastSent = newNotification.timestamp;
+            savePersistentAnnouncement(persistentData);
+        }
+    }
+  } catch (e) {
+     console.error('Error in persistent announcement check:', e);
+  }
+  // --- END NEW REPEATER LOGIC ---
+
   const notifications = loadFile(NOTIFICATIONS_FILE);
   notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   res.json(notifications);
 });
 
-function saveNotification({ userId, duration, type, message }) {
-    const notifications = loadFile(NOTIFICATIONS_FILE);
-    
-    notifications.push({
-        id: uuidv4(),
-        timestamp: new Date().toISOString(),
-        userId: userId,
-        duration: duration,
-        type: type || 'claim',
-        message: message
-    });
-    
-    saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); 
-}
+// NOTE: The second, duplicate saveNotification function that was here has been moved to the top.
 
 app.post('/api/notifications/delete-last', (req, res) => {
     const { developerId } = req.body;
@@ -256,6 +325,18 @@ app.post('/api/notifications/delete-last', (req, res) => {
     if (indexToRemove !== -1) {
         const removed = notifications.splice(indexToRemove, 1);
         saveFile(NOTIFICATIONS_FILE, notifications);
+        
+        // --- BEGIN MODIFIED LOGIC ---
+        // Also clear the persistent announcement state
+        const persistentData = loadPersistentAnnouncement();
+        if (persistentData.isActive) {
+            persistentData.isActive = false;
+            persistentData.message = null;
+            savePersistentAnnouncement(persistentData);
+            console.log('[DELETE] Cleared persistent announcement.');
+        }
+        // --- END MODIFIED LOGIC ---
+
         return res.json({ success: true, message: `Removed announcement: "${removed[0].message}"` });
     } else {
         return res.status(404).json({ success: false, error: 'No announcements found to remove.' });

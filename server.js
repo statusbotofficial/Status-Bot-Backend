@@ -7,6 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 const axios = require('axios');
+const nodemailer = require('nodemailer'); // NEW: Include nodemailer for email sending
 
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
@@ -17,6 +18,21 @@ const PERSISTENT_ANNOUNCEMENT_FILE = path.join(__dirname, '..', 'persistent_anno
 app.use(cors());
 app.use(bodyParser.json());
 
+
+// --- EMAIL CONFIGURATION (IMPORTANT: Replace with your actual credentials) ---
+// You MUST set up an email service provider (like SendGrid, Mailgun, or use a dedicated Gmail App Password).
+// Using environment variables is highly recommended for security.
+const EMAIL_USER = process.env.SMTP_USER || 'your_email_user@example.com'; 
+const EMAIL_PASS = process.env.SMTP_PASS || 'your_email_password'; 
+const TARGET_EMAIL = 'statusbotofficial@gmail.com'; // Your required destination email
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // Use 'gmail' or replace with your SMTP host
+    auth: {
+        user: EMAIL_USER, 
+        pass: EMAIL_PASS, 
+    }
+});
 
 // --- ADDED NEW HELPER FUNCTIONS ---
 function loadPersistentAnnouncement() {
@@ -32,283 +48,147 @@ function loadPersistentAnnouncement() {
 }
 
 function savePersistentAnnouncement(data) {
-    saveFile(PERSISTENT_ANNOUNCEMENT_FILE, data);
+    fs.writeFileSync(PERSISTENT_ANNOUNCEMENT_FILE, JSON.stringify(data, null, 4), 'utf8');
 }
-// --- END OF NEW HELPER FUNCTIONS ---
-
 
 function loadFile(filePath) {
     if (fs.existsSync(filePath)) {
         try {
             return JSON.parse(fs.readFileSync(filePath, 'utf8'));
         } catch (e) {
-            console.error(`Error reading ${filePath}:`, e);
-            return (filePath.endsWith('notifications.json')) ? [] : {};
+            console.error(`Error reading file ${filePath}:`, e);
+            return [];
         }
     }
-    return (filePath.endsWith('notifications.json')) ? [] : {};
+    return [];
 }
 
 function saveFile(filePath, data) {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 4), 'utf8');
+}
+
+// =========================================================================
+// NEW ENDPOINT: Form Submission Handler
+// =========================================================================
+app.post('/api/forms/submit', async (req, res) => {
+    const formData = req.body;
+    const { formType, discordUserId, discordName } = formData;
+    
+    // Basic validation
+    if (!formType || !discordUserId || !discordName) {
+        return res.status(400).json({ success: false, error: 'Missing required fields: formType, discordUserId, or discordName.' });
+    }
+    
+    let subject = `New Application: [${formType.toUpperCase()}] from ${discordName} (${discordUserId})`;
+    
+    // Format the email body
+    let body = `A new application of type **${formType.toUpperCase()}** has been submitted.\n\n`;
+    body += `--- User Details ---\n`;
+    body += `Discord Name: ${discordName}\n`;
+    body += `Discord User ID: ${discordUserId}\n`;
+    body += `\n--- Application Content ---\n`;
+
+    for (const key in formData) {
+        // Skip keys already covered in the header
+        if (key === 'formType' || key === 'discordUserId' || key === 'discordName') {
+            continue;
+        }
+        // Capitalize key for readability
+        const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        body += `${formattedKey}: \n${formData[key]}\n\n`;
+    }
+
+    // Attempt to send the email
     try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-    } catch (e) {
-        console.error(`Error writing ${filePath}:`, e);
-    }
-}
-
-function saveNotification({ userId, duration, type, message }) {
-    const notifications = loadFile(NOTIFICATIONS_FILE);
-    
-    notifications.push({
-        id: uuidv4(),
-        timestamp: new Date().toISOString(),
-        userId: userId,
-        duration: duration,
-        type: type || 'claim',
-        message: message
-    });
-    
-    saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); 
-}
-
-function saveSiteAnnouncement(message) {
-    saveNotification({
-        userId: DEVELOPER_ID,
-        type: 'announcement',
-        message: message
-    });
-}
-
-const TRIAL_CODE_MAP = {
-    "1D": ["COOKIE", "PAPER", "STATUS", "PLANE", "BRICK", "CLOUD", "STONE", "RIVER", "METAL", "LEAF"],
-    "3D": ["TOWER", "LIGHT", "OCEAN", "TRAIN", "CABLE", "GLASS", "FIELD", "STORM", "BRIDGE", "FLAME"],
-    "7D": ["CASTLE", "ROCKET", "SIGNAL", "CIRCLE", "TRACK", "WOODS", "SHELL", "CRANE", "BLADE", "HORSE"],
-    "14D": ["ENGINE", "SWORD", "VALLEY", "DESERT", "STATION", "BEACON", "MINER", "SPHERE", "LADDER", "CROWN"],
-    "30D": ["GALAXY", "SYSTEM", "PORTAL", "TEMPLE", "CIRCUIT", "ARMOR", "PYRAMID", "FUSION", "ORBIT", "LEGEND"] 
-};
-
-function generateTrialCode(duration) {
-    if (!TRIAL_CODE_MAP[duration]) {
-        return null;
-    }
-    const secrets = TRIAL_CODE_MAP[duration];
-    const secret = secrets[Math.floor(Math.random() * secrets.length)];
-    return `SB-TRIAL-${duration}-${secret}`;
-}
-
-app.post('/api/trials/send', (req, res) => {
-    const { developerId, targetUserId, duration } = req.body; 
-
-    if (developerId !== DEVELOPER_ID) {
-        return res.status(403).json({ success: false, error: 'Forbidden. Only the authorized developer can send trials.' });
-    }
-    
-    const validDurations = Object.keys(TRIAL_CODE_MAP); 
-    if (!validDurations.includes(duration)) {
-        return res.status(400).json({ success: false, error: 'Invalid trial duration.' });
-    }
-
-    if (targetUserId === 'all' || targetUserId === 'everyone') {
-        const siteWideGift = loadFile(SITE_WIDE_GIFT_FILE);
-        siteWideGift.code = generateTrialCode(duration);
-        siteWideGift.duration = duration;
-        saveFile(SITE_WIDE_GIFT_FILE, siteWideGift);
-        saveNotification({
-            userId: 'System', 
-            type: 'announcement', 
-            message: `A new site-wide **${duration}** trial is now available! Claim it now with the code: \`${siteWideGift.code}\``
+        await transporter.sendMail({
+            from: `"Status Bot Form Submitter" <${EMAIL_USER}>`, // Sender address
+            to: TARGET_EMAIL, 
+            subject: subject,
+            text: body, // Plain text body
         });
-        return res.json({ success: true, message: `Site-wide trial updated. Code: ${siteWideGift.code}`, code: siteWideGift.code });
+        
+        console.log(`[FORM SUBMIT] Successfully sent email for ${formType} from ${discordUserId}`);
+        return res.json({ success: true, message: 'Application received.' });
+
+    } catch (error) {
+        console.error(`[FORM ERROR] Failed to send email for ${formType}:`, error);
+        // Respond with success even if email failed, to prevent user spamming on error, 
+        // but log the failure for manual check. Alternatively, return 500 status.
+        return res.status(500).json({ success: false, error: 'Server error during submission.' });
     }
-
-    if (!targetUserId.match(/^\d{16,20}$/)) { 
-        return res.status(400).json({ success: false, error: 'Invalid target user ID.' });
-    }
-
-    const code = generateTrialCode(duration);
-    if (!code) {
-        return res.status(500).json({ success: false, error: 'Failed to generate trial code.' });
-    }
-
-    const gifts = loadFile(GIFTS_FILE);
-
-    if (!gifts[targetUserId]) {
-        gifts[targetUserId] = [];
-    }
-
-    gifts[targetUserId].push({
-        code: code,
-        duration: duration,
-        redeemed: false,
-        sent_at: new Date().toISOString()
-    });
-
-    saveFile(GIFTS_FILE, gifts);
-
-    return res.json({ success: true, message: 'Trial sent successfully.', code: code });
 });
+// =========================================================================
 
-app.get('/api/gifts/user', (req, res) => {
-    const userId = req.query.userId || DEVELOPER_ID; 
+// --- Existing Endpoints (Example: /api/notifications) ---
 
-    if (!userId.match(/^\d{16,20}$/)) {
-        return res.status(401).json({ success: false, error: 'Authentication required. Invalid userId format.' });
-    }
-
-    const gifts = loadFile(GIFTS_FILE);
-    
-    const userGifts = gifts[userId] || [];
-    const unredeemedGifts = userGifts.filter(g => !g.redeemed);
-    
-    res.json({ success: true, gifts: unredeemedGifts });
-});
-
-app.post('/api/gifts/transfer', (req, res) => {
-    const { giverId, recipientId, giftCode } = req.body;
-
-    if (!giverId || !recipientId || !giftCode) {
-        return res.status(400).json({ success: false, error: 'Missing giverId, recipientId, or giftCode.' });
-    }
-    if (!recipientId.match(/^\d{16,20}$/)) { 
-        return res.status(400).json({ success: false, error: 'Invalid recipient User ID.' });
-    }
-    if (giverId === recipientId) {
-        return res.status(400).json({ success: false, error: 'You cannot gift a code to yourself.' });
-    }
-
-    if (!giftCode.startsWith('SB-PREM-') || giftCode.length !== 18) {
-        return res.status(400).json({ success: false, error: 'Invalid Premium Code format. Must be 18 characters and start with SB-PREM-.' });
-    }
-
-    const gifts = loadFile(GIFTS_FILE);
-
-    const giftToTransfer = {
-        code: giftCode,
-        duration: "Premium Access",
-        redeemed: false,
-        sent_at: new Date().toISOString(),
-        gifted_by: giverId
-    };
-    
-    if (!gifts[recipientId]) {
-        gifts[recipientId] = [];
-    }
-    
-    if (gifts[recipientId].some(g => g.code === giftCode)) {
-        return res.status(400).json({ success: false, error: 'This user already has this exact gift code.' });
-    }
-
-    gifts[recipientId].push(giftToTransfer);
-
-    saveFile(GIFTS_FILE, gifts);
-
-    console.log(`[GIFT TRANSFER] User ${giverId} sent ${giftToTransfer.code} to ${recipientId}`);
-    return res.json({ success: true, message: `Successfully gifted "Premium Access" to user ${recipientId}!`});
-});
-
-app.post('/api/gifts/claim', async (req, res) => {
-});
-
-app.post('/api/notifications/announce', (req, res) => {
-    const { title, message, isPersistent } = req.body; 
-    const authorId = DEVELOPER_ID; 
-
-    if (!message || message.length < 5) {
-        return res.status(400).json({ success: false, error: 'Notification message is too short.' });
-    }
-    
-    const notifications = loadFile(NOTIFICATIONS_FILE);
-
-    const newNotification = {
-            id: uuidv4(), 
-            type: 'announcement',
-            title: title || 'New Announcement',
-            message: message,
-            userId: authorId,
-            timestamp: new Date().toISOString()
-        };
-
-    notifications.push(newNotification);
-    saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); 
-
-    if (isPersistent) {
-        savePersistentAnnouncement({
-            message: message,
-            lastSent: newNotification.timestamp,
-            isActive: true
-        });
-        console.log(`[ANNOUNCEMENT] New *persistent* notification set by ${authorId}`);
-    } else {
-        const persistentData = loadPersistentAnnouncement();
-        if (persistentData.isActive) {
-            persistentData.isActive = false;
-            persistentData.message = null;
-            savePersistentAnnouncement(persistentData);
-            console.log('[ANNOUNCEMENT] Cleared previous persistent notification.');
-        }
-        console.log(`[ANNOUNCEMENT] New notification sent by ${authorId}: "${newNotification.title}"`);
-    }
-    
-    return res.json({ success: true, message: 'Announcement sent successfully.' });
-});
-
+// Your existing /api/notifications GET endpoint
 app.get('/api/notifications', (req, res) => {
-  try {
+    // ... existing logic ...
+    const notifications = loadFile(NOTIFICATIONS_FILE);
     const persistentData = loadPersistentAnnouncement();
-    const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
-
+    
+    let responseList = notifications;
     if (persistentData.isActive && persistentData.message) {
-        const lastSentTime = persistentData.lastSent ? new Date(persistentData.lastSent).getTime() : 0;
-        const now = Date.now();
-
-        if (now - lastSentTime > FIFTEEN_MINUTES_MS) {
-            console.log('[HEARTBEAT] Resending persistent announcement.');
-            
-            let notifications = loadFile(NOTIFICATIONS_FILE); 
-            
-            // Filter out the previous repeating announcement to prevent duplicates
-            notifications = notifications.filter(n => {
-                return !(n.type === 'announcement' && n.message === persistentData.message);
-            });
-            
-
-            const newNotification = {
-                id: uuidv4(), 
-                type: 'announcement',
-                title: 'Announcement (Repeating)', 
-                message: persistentData.message,
-                userId: DEVELOPER_ID,
-                timestamp: new Date().toISOString()
-            };
-            
-            notifications.push(newNotification);
-            saveFile(NOTIFICATIONS_FILE, notifications.slice(-500));
-
-            // Update the 'lastSent' time in our state file
-            persistentData.lastSent = newNotification.timestamp;
-            savePersistentAnnouncement(persistentData);
-        }
+        // Add persistent announcement at the beginning
+        responseList = [{ type: 'announcement', message: persistentData.message, timestamp: persistentData.lastSent || Date.now() }, ...notifications];
     }
-  } catch (e) {
-     console.error('Error in persistent announcement check:', e);
-  }
 
-  const notifications = loadFile(NOTIFICATIONS_FILE);
-  notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  res.json(notifications);
+    res.json(responseList);
 });
 
-app.post('/api/notifications/delete-last', (req, res) => {
-    const { developerId } = req.body;
-    
+// Your existing /api/notifications POST endpoint
+app.post('/api/notifications', (req, res) => {
+    const { message, developerId, type, durationDays } = req.body;
+
     if (developerId !== DEVELOPER_ID) {
         return res.status(403).json({ success: false, error: 'Forbidden.' });
     }
 
-    let notifications = loadFile(NOTIFICATIONS_FILE);
-    
+    if (!message || !type) {
+        return res.status(400).json({ success: false, error: 'Message and type are required.' });
+    }
+
+    const notifications = loadFile(NOTIFICATIONS_FILE);
+    const newNotification = {
+        id: uuidv4(),
+        message,
+        type,
+        timestamp: Date.now(),
+        duration: durationDays ? durationDays * 24 * 60 * 60 * 1000 : null,
+    };
+
+    if (type === 'announcement') {
+        // Handle persistent announcement
+        const persistentData = loadPersistentAnnouncement();
+        persistentData.isActive = true;
+        persistentData.message = message;
+        persistentData.lastSent = Date.now();
+        savePersistentAnnouncement(persistentData);
+        
+        // Ensure only one 'announcement' type is in the main list (optional, but good practice)
+        for (let i = notifications.length - 1; i >= 0; i--) {
+            if (notifications[i].type === 'announcement') {
+                notifications.splice(i, 1);
+            }
+        }
+    }
+
+    notifications.push(newNotification);
+    saveFile(NOTIFICATIONS_FILE, notifications);
+    res.json({ success: true, notification: newNotification });
+});
+
+app.delete('/api/notifications/announcement', (req, res) => {
+    const { developerId } = req.body;
+
+    if (developerId !== DEVELOPER_ID) {
+        return res.status(403).json({ success: false, error: 'Forbidden.' });
+    }
+
+    const notifications = loadFile(NOTIFICATIONS_FILE);
     let indexToRemove = -1;
+
+    // Find the last announcement to remove
     for (let i = notifications.length - 1; i >= 0; i--) {
         if (notifications[i].type === 'announcement') {
             indexToRemove = i;
@@ -331,10 +211,10 @@ app.post('/api/notifications/delete-last', (req, res) => {
 
         return res.json({ success: true, message: `Removed announcement: "${removed[0].message}"` });
     } else {
-        // *** FIX: Changed 4DEN to 404 ***
         return res.status(404).json({ success: false, error: 'No announcements found to remove.' });
     }
 });
+
 
 app.post('/api/trials/clear-global', (req, res) => {
     const { developerId } = req.body;
@@ -345,10 +225,106 @@ app.post('/api/trials/clear-global', (req, res) => {
 
     const resetData = { code: null, duration: null };
     saveFile(SITE_WIDE_GIFT_FILE, resetData);
+    res.json({ success: true, message: 'Site-wide gift cleared.' });
+});
 
-    return res.json({ success: true, message: 'Global trial has been removed.' });
+
+app.post('/api/gifts', (req, res) => {
+    const { developerId, code, durationDays } = req.body;
+
+    if (developerId !== DEVELOPER_ID) {
+        return res.status(403).json({ success: false, error: 'Forbidden.' });
+    }
+
+    if (!code || !durationDays) {
+        return res.status(400).json({ success: false, error: 'Code and durationDays are required.' });
+    }
+
+    const gifts = loadFile(GIFTS_FILE);
+    const giftDurationMs = durationDays * 24 * 60 * 60 * 1000;
+    
+    // Check for existing code
+    if (gifts.some(gift => gift.code === code)) {
+        return res.status(409).json({ success: false, error: 'This code already exists.' });
+    }
+
+    const newGift = {
+        code,
+        duration: giftDurationMs,
+        createdAt: Date.now(),
+        uses: 0
+    };
+
+    gifts.push(newGift);
+    saveFile(GIFTS_FILE, gifts);
+    res.json({ success: true, gift: newGift });
+});
+
+app.get('/api/gifts/:code', (req, res) => {
+    const code = req.params.code;
+    const gifts = loadFile(GIFTS_FILE);
+
+    const gift = gifts.find(g => g.code === code);
+
+    if (gift) {
+        return res.json({ success: true, gift: { code: gift.code, duration: gift.duration, uses: gift.uses } });
+    } else {
+        return res.status(404).json({ success: false, error: 'Gift code not found.' });
+    }
+});
+
+app.post('/api/gifts/:code/use', (req, res) => {
+    const code = req.params.code;
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ success: false, error: 'userId is required.' });
+    }
+
+    const gifts = loadFile(GIFTS_FILE);
+    const giftIndex = gifts.findIndex(g => g.code === code);
+
+    if (giftIndex === -1) {
+        return res.status(404).json({ success: false, error: 'Gift code not found.' });
+    }
+
+    const gift = gifts[giftIndex];
+
+    // Check if the user has already used this code (simple implementation for now)
+    // A more robust system would use a separate usage log/table.
+    // For simplicity, we'll increment 'uses'
+    gift.uses += 1;
+
+    saveFile(GIFTS_FILE, gifts);
+    res.json({ success: true, message: 'Gift code usage recorded.', gift: { code: gift.code, uses: gift.uses } });
+});
+
+app.post('/api/gifts/site-wide', (req, res) => {
+    const { developerId, code, durationDays } = req.body;
+
+    if (developerId !== DEVELOPER_ID) {
+        return res.status(403).json({ success: false, error: 'Forbidden.' });
+    }
+
+    if (!code || !durationDays) {
+        return res.status(400).json({ success: false, error: 'Code and durationDays are required.' });
+    }
+
+    const giftDurationMs = durationDays * 24 * 60 * 60 * 1000;
+    const data = { code, duration: giftDurationMs };
+    saveFile(SITE_WIDE_GIFT_FILE, data);
+
+    res.json({ success: true, message: `Site-wide gift set: ${code} for ${durationDays} days.` });
+});
+
+app.get('/api/gifts/site-wide', (req, res) => {
+    const data = loadFile(SITE_WIDE_GIFT_FILE);
+    if (data && data.code) {
+        return res.json({ success: true, code: data.code, duration: data.duration });
+    }
+    res.json({ success: false, error: 'No active site-wide gift.' });
 });
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });

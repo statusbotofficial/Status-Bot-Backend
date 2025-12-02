@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 const axios = require('axios');
-const nodemailer = require('nodemailer'); // Only require once
+const nodemailer = require('nodemailer');
 
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
@@ -20,16 +20,16 @@ app.use(bodyParser.json());
 
 
 // --- EMAIL CONFIGURATION ---
-// IMPORTANT: These credentials must be set as environment variables (SMTP_USER, SMTP_PASS)
-// for security and proper functionality, especially when hosted.
-// We use placeholder values here, but the actual logic relies on process.env.
-const EMAIL_USER = process.env.SMTP_USER || 'your_email_user@example.com';
-const TARGET_EMAIL = 'statusbotofficial@gmail.com'; // Destination email
+// IMPORTANT: The actual credentials MUST be set as environment variables (SMTP_USER, SMTP_PASS)
+// EMAIL_USER is the email account that SENDS the form.
+const EMAIL_USER = process.env.SMTP_USER;
+// TARGET_EMAIL is the email account that RECEIVES the form. This is safe to hardcode.
+const TARGET_EMAIL = 'penspnzmonkey@gmail.com'; // <--- YOU CAN EDIT THIS ONE SAFELY
 
 let transporter = null;
 let emailingEnabled = false;
 
-// Only initialize transporter if credentials are provided via environment variables
+// Only initialize transporter if both environment variables are provided
 if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
         transporter = nodemailer.createTransport({
@@ -121,7 +121,7 @@ app.post('/api/forms/submit', async (req, res) => {
     // Attempt to send the email
     try {
         await transporter.sendMail({
-            from: `"Status Bot Form Submitter" <${process.env.SMTP_USER}>`, // Sender address, use actual user
+            from: `"Status Bot Form Submitter" <${process.env.SMTP_USER}>`, // Sender address, uses the secure environment variable
             to: TARGET_EMAIL,
             subject: subject,
             text: body, // Plain text body

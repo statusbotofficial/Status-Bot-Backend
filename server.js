@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 const axios = require('axios');
-const nodemailer = require('nodemailer'); // NEW: Include nodemailer for email sending
+const nodemailer = require('nodemailer');
 
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
@@ -328,3 +328,4 @@ app.get('/api/gifts/site-wide', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+

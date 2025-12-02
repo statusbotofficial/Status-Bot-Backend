@@ -20,19 +20,30 @@ app.use(bodyParser.json());
 
 
 // --- EMAIL CONFIGURATION (IMPORTANT: Replace with your actual credentials) ---
-// You MUST set up an email service provider (like SendGrid, Mailgun, or use a dedicated Gmail App Password).
-// Using environment variables is highly recommended for security.
-const EMAIL_USER = process.env.SMTP_USER || 'your_email_user@example.com'; 
-const EMAIL_PASS = process.env.SMTP_PASS || 'your_email_password'; 
-const TARGET_EMAIL = 'statusbotofficial@gmail.com'; // Your required destination email
+const TARGET_EMAIL = 'statusbotofficial@gmail.com'; 
+const EMAIL_USER = process.env.SMTP_USER;
+const EMAIL_PASS = process.env.SMTP_PASS;
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // Use 'gmail' or replace with your SMTP host
-    auth: {
-        user: EMAIL_USER, 
-        pass: EMAIL_PASS, 
+let transporter;
+let emailingEnabled = false;
+
+if (EMAIL_USER && EMAIL_PASS) {
+    try {
+        transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: EMAIL_USER, 
+                pass: EMAIL_PASS, 
+            }
+        });
+        emailingEnabled = true;
+        console.log('[EMAIL] Nodemailer transporter initialized successfully.');
+    } catch (e) {
+        console.error('[EMAIL ERROR] Failed to initialize Nodemailer transporter:', e);
     }
-});
+} else {
+    console.warn('[EMAIL WARNING] SMTP_USER or SMTP_PASS environment variables are missing. Email sending is disabled.');
+}
 
 // --- ADDED NEW HELPER FUNCTIONS ---
 function loadPersistentAnnouncement() {
@@ -43,7 +54,6 @@ function loadPersistentAnnouncement() {
             console.error('Error reading persistent announcement:', e);
         }
     }
-    // Default structure if file doesn't exist
     return { message: null, lastSent: null, isActive: false };
 }
 
@@ -78,6 +88,12 @@ app.post('/api/forms/submit', async (req, res) => {
     if (!formType || !discordUserId || !discordName) {
         return res.status(400).json({ success: false, error: 'Missing required fields: formType, discordUserId, or discordName.' });
     }
+
+    if (!emailingEnabled) {
+        console.warn(`[FORM SUBMIT] Form submitted, but email sending is disabled. Data: ${JSON.stringify(formData)}`);
+        // We still return success so the user doesn't get a front-end error, but you need to fix the backend credentials.
+        return res.json({ success: true, message: 'Application received (Email sending disabled on server).' });
+    }
     
     let subject = `New Application: [${formType.toUpperCase()}] from ${discordName} (${discordUserId})`;
     
@@ -101,10 +117,10 @@ app.post('/api/forms/submit', async (req, res) => {
     // Attempt to send the email
     try {
         await transporter.sendMail({
-            from: `"Status Bot Form Submitter" <${EMAIL_USER}>`, // Sender address
+            from: `"Status Bot Form Submitter" <${EMAIL_USER}>`,
             to: TARGET_EMAIL, 
             subject: subject,
-            text: body, // Plain text body
+            text: body,
         });
         
         console.log(`[FORM SUBMIT] Successfully sent email for ${formType} from ${discordUserId}`);
@@ -112,8 +128,6 @@ app.post('/api/forms/submit', async (req, res) => {
 
     } catch (error) {
         console.error(`[FORM ERROR] Failed to send email for ${formType}:`, error);
-        // Respond with success even if email failed, to prevent user spamming on error, 
-        // but log the failure for manual check. Alternatively, return 500 status.
         return res.status(500).json({ success: false, error: 'Server error during submission.' });
     }
 });
@@ -123,7 +137,6 @@ app.post('/api/forms/submit', async (req, res) => {
 
 // Your existing /api/notifications GET endpoint
 app.get('/api/notifications', (req, res) => {
-    // ... existing logic ...
     const notifications = loadFile(NOTIFICATIONS_FILE);
     const persistentData = loadPersistentAnnouncement();
     
@@ -328,4 +341,3 @@ app.get('/api/gifts/site-wide', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-

@@ -7,33 +7,36 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 const axios = require('axios');
-const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer'); // Only require once
 
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
-const DEVELOPER_ID = "1362553254117904496"; 
-const SITE_WIDE_GIFT_FILE = path.join(__dirname, '..', 'site_wide_gift.json'); 
-const PERSISTENT_ANNOUNCEMENT_FILE = path.join(__dirname, '..', 'persistent_announcement.json'); 
+const DEVELOPER_ID = "1362553254117904496";
+const SITE_WIDE_GIFT_FILE = path.join(__dirname, '..', 'site_wide_gift.json');
+const PERSISTENT_ANNOUNCEMENT_FILE = path.join(__dirname, '..', 'persistent_announcement.json');
 
 app.use(cors());
 app.use(bodyParser.json());
 
 
-// --- EMAIL CONFIGURATION (IMPORTANT: Replace with your actual credentials) ---
-const TARGET_EMAIL = 'statusbotofficial@gmail.com'; 
-const EMAIL_USER = process.env.SMTP_USER;
-const EMAIL_PASS = process.env.SMTP_PASS;
+// --- EMAIL CONFIGURATION ---
+// IMPORTANT: These credentials must be set as environment variables (SMTP_USER, SMTP_PASS)
+// for security and proper functionality, especially when hosted.
+// We use placeholder values here, but the actual logic relies on process.env.
+const EMAIL_USER = process.env.SMTP_USER || 'your_email_user@example.com';
+const TARGET_EMAIL = 'statusbotofficial@gmail.com'; // Destination email
 
-let transporter;
+let transporter = null;
 let emailingEnabled = false;
 
-if (EMAIL_USER && EMAIL_PASS) {
+// Only initialize transporter if credentials are provided via environment variables
+if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
         transporter = nodemailer.createTransport({
-            service: 'gmail',
+            service: 'gmail', // Using Gmail as specified
             auth: {
-                user: EMAIL_USER, 
-                pass: EMAIL_PASS, 
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
             }
         });
         emailingEnabled = true;
@@ -54,6 +57,7 @@ function loadPersistentAnnouncement() {
             console.error('Error reading persistent announcement:', e);
         }
     }
+    // Default structure if file doesn't exist
     return { message: null, lastSent: null, isActive: false };
 }
 
@@ -83,7 +87,7 @@ function saveFile(filePath, data) {
 app.post('/api/forms/submit', async (req, res) => {
     const formData = req.body;
     const { formType, discordUserId, discordName } = formData;
-    
+
     // Basic validation
     if (!formType || !discordUserId || !discordName) {
         return res.status(400).json({ success: false, error: 'Missing required fields: formType, discordUserId, or discordName.' });
@@ -94,9 +98,9 @@ app.post('/api/forms/submit', async (req, res) => {
         // We still return success so the user doesn't get a front-end error, but you need to fix the backend credentials.
         return res.json({ success: true, message: 'Application received (Email sending disabled on server).' });
     }
-    
+
     let subject = `New Application: [${formType.toUpperCase()}] from ${discordName} (${discordUserId})`;
-    
+
     // Format the email body
     let body = `A new application of type **${formType.toUpperCase()}** has been submitted.\n\n`;
     body += `--- User Details ---\n`;
@@ -117,12 +121,12 @@ app.post('/api/forms/submit', async (req, res) => {
     // Attempt to send the email
     try {
         await transporter.sendMail({
-            from: `"Status Bot Form Submitter" <${EMAIL_USER}>`,
-            to: TARGET_EMAIL, 
+            from: `"Status Bot Form Submitter" <${process.env.SMTP_USER}>`, // Sender address, use actual user
+            to: TARGET_EMAIL,
             subject: subject,
-            text: body,
+            text: body, // Plain text body
         });
-        
+
         console.log(`[FORM SUBMIT] Successfully sent email for ${formType} from ${discordUserId}`);
         return res.json({ success: true, message: 'Application received.' });
 
@@ -139,7 +143,7 @@ app.post('/api/forms/submit', async (req, res) => {
 app.get('/api/notifications', (req, res) => {
     const notifications = loadFile(NOTIFICATIONS_FILE);
     const persistentData = loadPersistentAnnouncement();
-    
+
     let responseList = notifications;
     if (persistentData.isActive && persistentData.message) {
         // Add persistent announcement at the beginning
@@ -177,7 +181,7 @@ app.post('/api/notifications', (req, res) => {
         persistentData.message = message;
         persistentData.lastSent = Date.now();
         savePersistentAnnouncement(persistentData);
-        
+
         // Ensure only one 'announcement' type is in the main list (optional, but good practice)
         for (let i = notifications.length - 1; i >= 0; i--) {
             if (notifications[i].type === 'announcement') {
@@ -212,7 +216,7 @@ app.delete('/api/notifications/announcement', (req, res) => {
     if (indexToRemove !== -1) {
         const removed = notifications.splice(indexToRemove, 1);
         saveFile(NOTIFICATIONS_FILE, notifications);
-        
+
         // Also clear the persistent announcement state
         const persistentData = loadPersistentAnnouncement();
         if (persistentData.isActive) {
@@ -255,7 +259,7 @@ app.post('/api/gifts', (req, res) => {
 
     const gifts = loadFile(GIFTS_FILE);
     const giftDurationMs = durationDays * 24 * 60 * 60 * 1000;
-    
+
     // Check for existing code
     if (gifts.some(gift => gift.code === code)) {
         return res.status(409).json({ success: false, error: 'This code already exists.' });

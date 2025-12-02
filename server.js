@@ -345,6 +345,8 @@ app.post('/api/trials/clear-global', (req, res) => {
 });
 
 app.post("/api/forms/submit", async (req, res) => {
+    console.log("📩 FORM SUBMISSION RECEIVED:", req.body.discordUsername);
+
     const {
         discordId,
         formType,
@@ -356,7 +358,7 @@ app.post("/api/forms/submit", async (req, res) => {
         whyApply
     } = req.body;
 
-    if (!discordId || !formType || !discordUsername) {
+    if (!formType || !discordId || !discordUsername) {
         return res.status(400).json({
             success: false,
             error: "Missing required fields"
@@ -368,7 +370,7 @@ app.post("/api/forms/submit", async (req, res) => {
             service: "gmail",
             auth: {
                 user: "statusbotofficial@gmail.com",
-                pass: "dfml zgza mcpf clax"
+                pass: "mhsa dnnp cyif xjag"
             }
         });
 
@@ -397,17 +399,20 @@ app.post("/api/forms/submit", async (req, res) => {
 
         await transporter.sendMail(mailOptions);
 
-        console.log(`[FORM] ${formType.toUpperCase()} application received from ${discordUsername}`);
+        console.log(`[FORM SUCCESS] ${formType.toUpperCase()} application sent`);
+
         res.json({ success: true });
 
     } catch (error) {
         console.error("FORM EMAIL ERROR:", error);
+
         res.status(500).json({
             success: false,
             error: "Failed to send email"
         });
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

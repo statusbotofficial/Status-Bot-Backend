@@ -5,10 +5,9 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const axios = require('axios');
 const nodemailer = require("nodemailer");
-
 
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
@@ -18,8 +17,20 @@ const PERSISTENT_ANNOUNCEMENT_FILE = path.join(__dirname, '..', 'persistent_anno
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
+// ================= EMAIL (FIXED FOR RENDER + GMAIL) =================
+const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+        user: "statusbotofficial@gmail.com",
+        pass: process.env.EMAIL_PASSWORD  // <-- SET THIS IN RENDER
+    }
+});
 
+// ================= UTILS =================
 function loadPersistentAnnouncement() {
     if (fs.existsSync(PERSISTENT_ANNOUNCEMENT_FILE)) {
         try {
@@ -34,7 +45,6 @@ function loadPersistentAnnouncement() {
 function savePersistentAnnouncement(data) {
     saveFile(PERSISTENT_ANNOUNCEMENT_FILE, data);
 }
-
 
 function loadFile(filePath) {
     if (fs.existsSync(filePath)) {
@@ -58,7 +68,7 @@ function saveFile(filePath, data) {
 
 function saveNotification({ userId, duration, type, message }) {
     const notifications = loadFile(NOTIFICATIONS_FILE);
-    
+
     notifications.push({
         id: uuidv4(),
         timestamp: new Date().toISOString(),
@@ -67,7 +77,7 @@ function saveNotification({ userId, duration, type, message }) {
         type: type || 'claim',
         message: message
     });
-    
+
     saveFile(NOTIFICATIONS_FILE, notifications.slice(-500)); 
 }
 
@@ -79,6 +89,7 @@ function saveSiteAnnouncement(message) {
     });
 }
 
+// ================ TRIALS =================
 const TRIAL_CODE_MAP = {
     "1D": ["COOKIE", "PAPER", "STATUS", "PLANE", "BRICK", "CLOUD", "STONE", "RIVER", "METAL", "LEAF"],
     "3D": ["TOWER", "LIGHT", "OCEAN", "TRAIN", "CABLE", "GLASS", "FIELD", "STORM", "BRIDGE", "FLAME"],
@@ -88,9 +99,7 @@ const TRIAL_CODE_MAP = {
 };
 
 function generateTrialCode(duration) {
-    if (!TRIAL_CODE_MAP[duration]) {
-        return null;
-    }
+    if (!TRIAL_CODE_MAP[duration]) return null;
     const secrets = TRIAL_CODE_MAP[duration];
     const secret = secrets[Math.floor(Math.random() * secrets.length)];
     return `SB-TRIAL-${duration}-${secret}`;
@@ -344,6 +353,8 @@ app.post('/api/trials/clear-global', (req, res) => {
     return res.json({ success: true, message: 'Global trial has been removed.' });
 });
 
+/* ------------------- FORM SUBMISSION (FIXED) ------------------- */
+
 app.post("/api/forms/submit", async (req, res) => {
     console.log("📩 FORM SUBMISSION RECEIVED:", req.body.discordUsername);
 
@@ -366,14 +377,6 @@ app.post("/api/forms/submit", async (req, res) => {
     }
 
     try {
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: "statusbotofficial@gmail.com",
-                pass: "mhsa dnnp cyif xjag"
-            }
-        });
-
         const mailOptions = {
             from: `"Status Bot" <statusbotofficial@gmail.com>`,
             to: "dumboyonpc@outlook.com",
@@ -400,11 +403,10 @@ app.post("/api/forms/submit", async (req, res) => {
         await transporter.sendMail(mailOptions);
 
         console.log(`[FORM SUCCESS] ${formType.toUpperCase()} application sent`);
-
         res.json({ success: true });
 
     } catch (error) {
-        console.error("FORM EMAIL ERROR:", error);
+        console.error("❌ FORM EMAIL ERROR:", error.message || error);
 
         res.status(500).json({
             success: false,
@@ -413,10 +415,6 @@ app.post("/api/forms/submit", async (req, res) => {
     }
 });
 
-app.get("/form/*", (req, res) => {
-    res.sendFile(path.join(__dirname, "form.html"));
-});
-
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`✅ Server is running on port ${PORT}`);
 });

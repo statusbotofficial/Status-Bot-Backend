@@ -22,11 +22,14 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // ================= EMAIL (FIXED FOR RENDER + GMAIL) =================
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false,
     auth: {
         user: "statusbotofficial@gmail.com",
-        pass: process.env.EMAIL_PASSWORD  // <-- SET THIS IN RENDER
+        pass: process.env.EMAIL_PASSWORD
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
@@ -418,4 +421,5 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 

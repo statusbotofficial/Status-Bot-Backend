@@ -370,7 +370,7 @@ app.post("/api/forms/submit", async (req, res) => {
     try {
         await resend.emails.send({
             from: "Status Bot <onboarding@resend.dev>",
-            to: ["dumboyonpc@outlook.com"],
+            to: ["statusbotofficial@gmail.com"],
             subject: `📩 New ${formType.toUpperCase()} Application | ${discordUsername}`,
             html: `
                 <h2>New Application Received</h2>
@@ -407,6 +407,7 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 
 
 

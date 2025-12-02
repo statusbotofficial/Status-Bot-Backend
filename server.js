@@ -406,11 +406,11 @@ app.post("/api/forms/submit", async (req, res) => {
         res.json({ success: true });
 
     } catch (error) {
-        console.error("❌ FORM EMAIL ERROR:", error.message || error);
-
+        console.error("❌ FORM EMAIL ERROR FULL:", error);
+    
         res.status(500).json({
             success: false,
-            error: "Failed to send email"
+            error: error.message
         });
     }
 });
@@ -418,3 +418,4 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+

@@ -7,7 +7,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const axios = require('axios');
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const NOTIFICATIONS_FILE = path.join(__dirname, '..', 'notifications.json');
 const GIFTS_FILE = path.join(__dirname, '..', 'gifts.json');
@@ -19,19 +20,6 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// ================= EMAIL (FIXED FOR RENDER + GMAIL) =================
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: {
-        user: "statusbotofficial@gmail.com",
-        pass: process.env.EMAIL_PASSWORD
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
 
 // ================= UTILS =================
 function loadPersistentAnnouncement() {
@@ -380,9 +368,9 @@ app.post("/api/forms/submit", async (req, res) => {
     }
 
     try {
-        const mailOptions = {
-            from: `"Status Bot" <statusbotofficial@gmail.com>`,
-            to: "dumboyonpc@outlook.com",
+        await resend.emails.send({
+            from: "Status Bot <onboarding@resend.dev>",
+            to: ["dumboyonpc@outlook.com"],
             subject: `📩 New ${formType.toUpperCase()} Application | ${discordUsername}`,
             html: `
                 <h2>New Application Received</h2>
@@ -401,16 +389,14 @@ app.post("/api/forms/submit", async (req, res) => {
                 <h3>Why they should be chosen</h3>
                 <p>${whyApply}</p>
             `
-        };
+        });
 
-        await transporter.sendMail(mailOptions);
-
-        console.log(`[FORM SUCCESS] ${formType.toUpperCase()} application sent`);
+        console.log(`✅ [FORM SUCCESS] ${formType.toUpperCase()} application sent`);
         res.json({ success: true });
 
     } catch (error) {
         console.error("❌ FORM EMAIL ERROR FULL:", error);
-    
+
         res.status(500).json({
             success: false,
             error: error.message
@@ -421,5 +407,6 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 
 

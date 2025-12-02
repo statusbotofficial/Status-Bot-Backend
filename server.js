@@ -413,6 +413,9 @@ app.post("/api/forms/submit", async (req, res) => {
     }
 });
 
+app.get("/form/*", (req, res) => {
+    res.sendFile(path.join(__dirname, "form.html"));
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

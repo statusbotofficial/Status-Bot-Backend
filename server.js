@@ -356,9 +356,12 @@ app.post("/api/forms/submit", async (req, res) => {
         });
     }
 
+    let mailOptions = {
+        from: `"Status Bot" <statusbotofficial@gmail.com>`,
+        to: "dumboyonpc@outlook.com"
+    };
+
     try {
-        let subject = "";
-        let html = "";
 
         if (formType === "staff") {
             const {
@@ -370,9 +373,8 @@ app.post("/api/forms/submit", async (req, res) => {
                 whyApply
             } = req.body;
 
-            subject = `📩 NEW STAFF APPLICATION | ${discordUsername}`;
-
-            html = `
+            mailOptions.subject = `📩 NEW STAFF APPLICATION | ${discordUsername}`; // NEW
+            mailOptions.html = `
                 <h2>👮 Staff Application Received</h2>
                 <hr>
                 <p><b>Discord ID:</b> ${discordId}</p>
@@ -397,16 +399,14 @@ app.post("/api/forms/submit", async (req, res) => {
                 experience
             } = req.body;
 
-            subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`;
-
-            html = `
+            mailOptions.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`; // NEW
+            mailOptions.html = `
                 <h2>💻 Developer Application Received</h2>
                 <hr>
                 <p><b>Discord ID:</b> ${discordId}</p>
                 <p><b>Discord Username:</b> ${discordUsername}</p>
                 <p><b>Age:</b> ${age}</p>
-
-                <h3>Languages / Frameworks</h3>
+                <p><b>Languages / Frameworks:</b></p>
                 <p>${languages}</p>
 
                 <h3>Experience</h3>
@@ -421,9 +421,8 @@ app.post("/api/forms/submit", async (req, res) => {
                 experience
             } = req.body;
 
-            subject = `📩 NEW DESIGNER APPLICATION | ${discordUsername}`;
-
-            html = `
+            mailOptions.subject = `📩 NEW DESIGNER APPLICATION | ${discordUsername}`; // NEW
+            mailOptions.html = `
                 <h2>🎨 Designer Application Received</h2>
                 <hr>
                 <p><b>Discord ID:</b> ${discordId}</p>
@@ -436,16 +435,13 @@ app.post("/api/forms/submit", async (req, res) => {
         }
 
         else {
-            return res.status(400).json({ success: false, error: "Unknown form type" });
+            return res.status(400).json({
+                success: false,
+                error: "Unknown form type"
+            });
         }
 
-        // ✅ SEND WITH RESEND
-        await resend.emails.send({
-            from: "Status Bot <onboarding@resend.dev>", // You can change this to your verified domain
-            to: ["dumboyonpc@outlook.com"],
-            subject,
-            html
-        });
+        await transporter.sendMail(mailOptions);
 
         console.log(`✅ ${formType.toUpperCase()} email sent successfully`);
         res.json({ success: true });
@@ -463,10 +459,3 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
-
-
-
-
-
-
-

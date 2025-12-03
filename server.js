@@ -441,7 +441,12 @@ app.post("/api/forms/submit", async (req, res) => {
             });
         }
 
-        await transporter.sendMail(mailOptions);
+        await resend.emails.send({
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html: mailOptions.html
+    });
 
         console.log(`✅ ${formType.toUpperCase()} email sent successfully`);
         res.json({ success: true });
@@ -459,4 +464,5 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 

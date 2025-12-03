@@ -357,8 +357,8 @@ app.post("/api/forms/submit", async (req, res) => {
     }
 
     let mailOptions = {
-        from: `"Status Bot" <statusbotofficial@gmail.com>`,
-        to: "dumboyonpc@outlook.com"
+        from: `"Status Bot" <onboarding@resend.dev>`,
+        to: "statusbotofficial@gmail.com"
     };
 
     try {
@@ -459,3 +459,4 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+

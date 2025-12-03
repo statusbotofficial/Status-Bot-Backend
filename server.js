@@ -395,15 +395,15 @@ app.post("/api/forms/submit", async (req, res) => {
 
     // ================= DEVELOPER =================
     else if (formType === "developer") {
-      const {
-        age,
-        experience,
-        languages,
-        codeProof
-      } = req.body;
+    const {
+        age = "Not provided",
+        experience = "Not provided",
+        languages = "Not provided",
+        codeProof = "No proof provided"
+    } = req.body;
 
-      mail.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`;
-      mail.html = `
+    mail.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`;
+    mail.html = `
         <h2>💻 Developer Application</h2>
         <hr>
         <p><b>Discord ID:</b> ${discordId}</p>
@@ -418,7 +418,7 @@ app.post("/api/forms/submit", async (req, res) => {
 
         <h3>Code Proof</h3>
         <p>${codeProof}</p>
-      `;
+    `;
     }
 
     // ================= DESIGNER =================
@@ -464,6 +464,7 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 
 
 

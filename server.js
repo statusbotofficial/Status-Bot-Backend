@@ -345,118 +345,124 @@ app.post('/api/trials/clear-global', (req, res) => {
 });
 
 app.post("/api/forms/submit", async (req, res) => {
-    const { formType, discordId } = req.body;
+    const { formType, discordId, discordUsername } = req.body;
 
-    console.log("📩 FORM SUBMISSION RECEIVED:", req.body?.discordUsername, "| Type:", formType);
+    console.log("📩 FORM SUBMISSION RECEIVED:", discordUsername, "| Type:", formType);
 
-    if (!formType || !discordId || !req.body.discordUsername) {
+    if (!formType || !discordId || !discordUsername) {
         return res.status(400).json({
             success: false,
             error: "Missing required fields"
         });
     }
 
-    let mailOptions = {
+    let mail = {
         from: `"Status Bot" <onboarding@resend.dev>`,
-        to: "statusbotofficial@gmail.com"
+        to: "statusbotofficial@gmail.com",
+        subject: "",
+        html: ""
     };
 
     try {
 
+        // =========================== STAFF ===========================
         if (formType === "staff") {
             const {
-                discordUsername,
                 age,
-                roleApply,
-                timezone,
-                experience,
-                whyApply
+                roleApply = "Not provided",
+                timezone = "Not provided",
+                experience = "Not provided",
+                whyApply = "Not provided"
             } = req.body;
 
-            mailOptions.subject = `📩 NEW STAFF APPLICATION | ${discordUsername}`; // NEW
-            mailOptions.html = `
-                <h2>👮 Staff Application Received</h2>
-                <hr>
-                <p><b>Discord ID:</b> ${discordId}</p>
-                <p><b>Discord Username:</b> ${discordUsername}</p>
-                <p><b>Age:</b> ${age}</p>
-                <p><b>Role Applying For:</b> ${roleApply}</p>
-                <p><b>Timezone:</b> ${timezone}</p>
+            mail.subject = `📩 NEW STAFF APPLICATION | ${discordUsername}`;
+            mail.html = `
+            <h2>👮 Staff Application</h2>
+            <hr/>
+            <p><b>Discord ID:</b> ${discordId}</p>
+            <p><b>Username:</b> ${discordUsername}</p>
+            <p><b>Age:</b> ${age}</p>
+            <p><b>Applying for:</b> ${roleApply}</p>
+            <p><b>Timezone:</b> ${timezone}</p>
 
-                <h3>Previous Experience</h3>
-                <p>${experience}</p>
+            <h3>Experience</h3>
+            <p>${experience}</p>
 
-                <h3>Why they should be chosen</h3>
-                <p>${whyApply}</p>
+            <h3>Why choose them</h3>
+            <p>${whyApply}</p>
             `;
         }
 
+        // =========================== DEVELOPER ===========================
         else if (formType === "developer") {
             const {
-                discordUsername,
                 age,
-                languages,
-                experience
+                experience = "Not provided",
+                languages = "Not provided",
+                codeProof = "Not provided"
             } = req.body;
 
-            mailOptions.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`; // NEW
-            mailOptions.html = `
-                <h2>💻 Developer Application Received</h2>
-                <hr>
-                <p><b>Discord ID:</b> ${discordId}</p>
-                <p><b>Discord Username:</b> ${discordUsername}</p>
-                <p><b>Age:</b> ${age}</p>
-                <p><b>Languages / Frameworks:</b></p>
-                <p>${languages}</p>
+            mail.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`;
+            mail.html = `
+            <h2>💻 Developer Application</h2>
+            <hr/>
+            <p><b>Discord ID:</b> ${discordId}</p>
+            <p><b>Username:</b> ${discordUsername}</p>
+            <p><b>Age:</b> ${age}</p>
 
-                <h3>Experience</h3>
-                <p>${experience}</p>
+            <h3>Languages</h3>
+            <p>${languages}</p>
+
+            <h3>Years of Experience</h3>
+            <p>${experience}</p>
+
+            <h3>Code Proof</h3>
+            <p>${codeProof}</p>
             `;
         }
 
+        // =========================== DESIGNER ===========================
         else if (formType === "designer") {
             const {
-                discordUsername,
                 age,
-                experience
+                experience = "Not provided",
+                proofLinks = "No links provided"
             } = req.body;
 
-            mailOptions.subject = `📩 NEW DESIGNER APPLICATION | ${discordUsername}`; // NEW
-            mailOptions.html = `
-                <h2>🎨 Designer Application Received</h2>
-                <hr>
-                <p><b>Discord ID:</b> ${discordId}</p>
-                <p><b>Discord Username:</b> ${discordUsername}</p>
-                <p><b>Age:</b> ${age}</p>
+            mail.subject = `📩 NEW DESIGNER APPLICATION | ${discordUsername}`;
+            mail.html = `
+            <h2>🎨 Designer Application</h2>
+            <hr/>
+            <p><b>Discord ID:</b> ${discordId}</p>
+            <p><b>Username:</b> ${discordUsername}</p>
+            <p><b>Age:</b> ${age}</p>
 
-                <h3>Design Experience / Types</h3>
-                <p>${experience}</p>
+            <h3>Design Types</h3>
+            <p>${experience}</p>
+
+            <h3>Proof</h3>
+            <p>${proofLinks}</p>
             `;
         }
 
         else {
             return res.status(400).json({
                 success: false,
-                error: "Unknown form type"
+                error: "Invalid form type"
             });
         }
 
-        await resend.emails.send({
-        from: mailOptions.from,
-        to: mailOptions.to,
-        subject: mailOptions.subject,
-        html: mailOptions.html
-    });
+        await resend.emails.send(mail);
 
-        console.log(`✅ ${formType.toUpperCase()} email sent successfully`);
+        console.log(`✅ ${formType.toUpperCase()} EMAIL SENT`);
         res.json({ success: true });
 
-    } catch (error) {
-        console.error("❌ FORM EMAIL ERROR:", error.message || error);
+    } catch (err) {
+        console.error("❌ EMAIL SEND FAILED:", err.message);
 
         res.status(500).json({
             success: false,
-            error: "Failed to send email"
+            error: err.message
         });
     }
 });
@@ -464,5 +470,6 @@ app.post("/api/forms/submit", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 
 

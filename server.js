@@ -345,131 +345,126 @@ app.post('/api/trials/clear-global', (req, res) => {
 });
 
 app.post("/api/forms/submit", async (req, res) => {
-    const { formType, discordId, discordUsername } = req.body;
+  const { formType, discordId, discordUsername } = req.body;
 
-    console.log("📩 FORM SUBMISSION RECEIVED:", discordUsername, "| Type:", formType);
+  console.log("📩 FORM SUBMISSION RECEIVED:", discordUsername, "| Type:", formType);
 
-    if (!formType || !discordId || !discordUsername) {
-        return res.status(400).json({
-            success: false,
-            error: "Missing required fields"
-        });
+  if (!formType || !discordId || !discordUsername) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing required fields"
+    });
+  }
+
+  let mail = {
+    from: `"Status Bot" <onboarding@resend.dev>`,
+    to: ["statusbotofficial@gmail.com"],
+    subject: "",
+    html: ""
+  };
+
+  try {
+
+    // ================= STAFF =================
+    if (formType === "staff") {
+      const {
+        age,
+        roleApply = "Not provided",
+        timezone = "Not provided",
+        experience = "Not provided",
+        whyApply = "Not provided"
+      } = req.body;
+
+      mail.subject = `📩 NEW STAFF APPLICATION | ${discordUsername}`;
+      mail.html = `
+        <h2>👮 Staff Application</h2>
+        <hr>
+        <p><b>Discord ID:</b> ${discordId}</p>
+        <p><b>Username:</b> ${discordUsername}</p>
+        <p><b>Age:</b> ${age}</p>
+        <p><b>Role:</b> ${roleApply}</p>
+        <p><b>Timezone:</b> ${timezone}</p>
+
+        <h3>Experience</h3>
+        <p>${experience}</p>
+
+        <h3>Why choose them</h3>
+        <p>${whyApply}</p>
+      `;
     }
 
-    let mail = {
-        from: `"Status Bot" <onboarding@resend.dev>`,
-        to: "statusbotofficial@gmail.com",
-        subject: "",
-        html: ""
-    };
+    // ================= DEVELOPER =================
+    else if (formType === "developer") {
+      const {
+        age,
+        experience,
+        languages,
+        codeProof
+      } = req.body;
 
-    try {
+      mail.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`;
+      mail.html = `
+        <h2>💻 Developer Application</h2>
+        <hr>
+        <p><b>Discord ID:</b> ${discordId}</p>
+        <p><b>Username:</b> ${discordUsername}</p>
+        <p><b>Age:</b> ${age}</p>
 
-        // =========================== STAFF ===========================
-        if (formType === "staff") {
-            const {
-                age,
-                roleApply = "Not provided",
-                timezone = "Not provided",
-                experience = "Not provided",
-                whyApply = "Not provided"
-            } = req.body;
+        <h3>Languages</h3>
+        <p>${languages}</p>
 
-            mail.subject = `📩 NEW STAFF APPLICATION | ${discordUsername}`;
-            mail.html = `
-            <h2>👮 Staff Application</h2>
-            <hr/>
-            <p><b>Discord ID:</b> ${discordId}</p>
-            <p><b>Username:</b> ${discordUsername}</p>
-            <p><b>Age:</b> ${age}</p>
-            <p><b>Applying for:</b> ${roleApply}</p>
-            <p><b>Timezone:</b> ${timezone}</p>
+        <h3>Years of Experience</h3>
+        <p>${experience}</p>
 
-            <h3>Experience</h3>
-            <p>${experience}</p>
-
-            <h3>Why choose them</h3>
-            <p>${whyApply}</p>
-            `;
-        }
-
-        // =========================== DEVELOPER ===========================
-        else if (formType === "developer") {
-            const {
-                age,
-                experience = "Not provided",
-                languages = "Not provided",
-                codeProof = "Not provided"
-            } = req.body;
-
-            mail.subject = `📩 NEW DEVELOPER APPLICATION | ${discordUsername}`;
-            mail.html = `
-            <h2>💻 Developer Application</h2>
-            <hr/>
-            <p><b>Discord ID:</b> ${discordId}</p>
-            <p><b>Username:</b> ${discordUsername}</p>
-            <p><b>Age:</b> ${age}</p>
-
-            <h3>Languages</h3>
-            <p>${languages}</p>
-
-            <h3>Years of Experience</h3>
-            <p>${experience}</p>
-
-            <h3>Code Proof</h3>
-            <p>${codeProof}</p>
-            `;
-        }
-
-        // =========================== DESIGNER ===========================
-        else if (formType === "designer") {
-            const {
-                age,
-                experience = "Not provided",
-                proofLinks = "No links provided"
-            } = req.body;
-
-            mail.subject = `📩 NEW DESIGNER APPLICATION | ${discordUsername}`;
-            mail.html = `
-            <h2>🎨 Designer Application</h2>
-            <hr/>
-            <p><b>Discord ID:</b> ${discordId}</p>
-            <p><b>Username:</b> ${discordUsername}</p>
-            <p><b>Age:</b> ${age}</p>
-
-            <h3>Design Types</h3>
-            <p>${experience}</p>
-
-            <h3>Proof</h3>
-            <p>${proofLinks}</p>
-            `;
-        }
-
-        else {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid form type"
-            });
-        }
-
-        await resend.emails.send(mail);
-
-        console.log(`✅ ${formType.toUpperCase()} EMAIL SENT`);
-        res.json({ success: true });
-
-    } catch (err) {
-        console.error("❌ EMAIL SEND FAILED:", err.message);
-
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
+        <h3>Code Proof</h3>
+        <p>${codeProof}</p>
+      `;
     }
+
+    // ================= DESIGNER =================
+    else if (formType === "designer") {
+      const {
+        age,
+        experience,
+        proofLinks = "No file attached"
+      } = req.body;
+
+      mail.subject = `📩 NEW DESIGNER APPLICATION | ${discordUsername}`;
+      mail.html = `
+        <h2>🎨 Designer Application</h2>
+        <hr>
+        <p><b>Discord ID:</b> ${discordId}</p>
+        <p><b>Username:</b> ${discordUsername}</p>
+        <p><b>Age:</b> ${age}</p>
+
+        <h3>Design Types</h3>
+        <p>${experience}</p>
+
+        <h3>Proof</h3>
+        <p>${proofLinks}</p>
+      `;
+    }
+
+    else {
+      return res.status(400).json({ success: false, error: "Invalid form type" });
+    }
+
+    await resend.emails.send(mail);
+
+    console.log(`✅ ${formType.toUpperCase()} EMAIL SENT`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error("❌ EMAIL ERROR:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
+
 
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 
 
 

@@ -347,44 +347,62 @@ app.post('/api/trials/clear-global', (req, res) => {
 
 app.post('/api/forms/submit', async (req, res) => {
   try {
-    const { formName, answers } = req.body;
+    const { page, questions } = req.body;
 
-    if (!answers || typeof answers !== "object") {
-      return res.status(400).json({ success: false, error: "Invalid form data" });
+    if (!questions || !questions.length) {
+      return res.status(400).json({ success: false });
     }
 
-    let emailBody = `
-      <h2>Status Bot Support</h2>
-      <p>Hello, Blake!</p>
-      <p>A new user has applied for a position in <strong>${formName}</strong>.</p>
-      <br>
+    let html = `
+      <div style="font-family: Arial; padding:20px;">
+        <h1>Status Bot Support</h1>
+        <p><b>New application from:</b> ${page}</p>
+        <hr/>
     `;
 
-    let count = 1;
-
-    for (const [question, answer] of Object.entries(answers)) {
-      emailBody += `
-        <p><strong>${count}. ${question}</strong></p>
-        <p>Answer: ${answer || "N/A"}</p>
-        <br>
+    questions.forEach((q, i) => {
+      html += `
+        <p><b>${i + 1}. ${q.question}</b></p>
+        <p>${q.answer || "No answer provided"}</p>
       `;
-      count++;
-    }
-
-    const response = await resend.emails.send({
-      from: "Status Bot <onboarding@resend.dev>",
-      to: [FORM_TO_EMAIL],
-      subject: `New Application - ${formName}`,
-      html: emailBody
     });
 
-    res.json({ success: true, message: "Form submitted and email sent", response });
+    html += `</div>`;
+
+    await resend.emails.send({
+      from: "Status Bot <onboarding@resend.dev>",
+      to: [FORM_TO_EMAIL],
+      subject: `New Application — ${page}`,
+      html: html
+    });
+
+    if (process.env.DISCORD_WEBHOOK_URL) {
+      const embed = {
+        embeds: [
+          {
+            title: `📥 New Application`,
+            description: `**Source:** ${page}`,
+            color: 0x4162ff,
+            fields: questions.map((q, i) => ({
+              name: `${i + 1}. ${q.question}`,
+              value: q.answer || "No answer",
+              inline: false
+            }))
+          }
+        ]
+      };
+
+      await axios.post(process.env.DISCORD_WEBHOOK_URL, embed);
+    }
+
+    res.json({ success: true });
 
   } catch (error) {
-    console.error("EMAIL ERROR:", error);
-    res.status(500).json({ success: false, error: "Failed to send email" });
+    console.error("Form submit error:", error);
+    res.status(500).json({ success: false });
   }
 });
+
 
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);

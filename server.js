@@ -417,17 +417,23 @@ app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
         ]
       };
 
-      if (req.file) {
-        const formData = new FormData();
-        formData.append("file", new Blob([req.file.buffer]), req.file.originalname);
-        formData.append("payload_json", JSON.stringify(embedData));
-
-        await axios.post(process.env.DISCORD_WEBHOOK_URL, formData, {
-          headers: formData.getHeaders()
-        });
-      } else {
-        await axios.post(process.env.DISCORD_WEBHOOK_URL, embedData);
-      }
+    if (req.file) {
+      const FormData = require("form-data");
+      const formData = new FormData();
+    
+      formData.append("file", req.file.buffer, {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype
+      });
+    
+      formData.append("payload_json", JSON.stringify(embedData));
+    
+      await axios.post(process.env.DISCORD_WEBHOOK_URL, formData, {
+        headers: formData.getHeaders()
+      });
+    
+    } else {
+      await axios.post(process.env.DISCORD_WEBHOOK_URL, embedData);
     }
 
     res.json({ success: true });
@@ -441,4 +447,5 @@ app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
 

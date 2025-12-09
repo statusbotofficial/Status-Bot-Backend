@@ -8,6 +8,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const axios = require('axios');
 const { Resend } = require("resend");
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
+
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FORM_TO_EMAIL = process.env.FORM_TO_EMAIL;
@@ -345,9 +348,20 @@ app.post('/api/trials/clear-global', (req, res) => {
     return res.json({ success: true, message: 'Global trial has been removed.' });
 });
 
-app.post('/api/forms/submit', async (req, res) => {
+app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
   try {
-    const { page, questions } = req.body;
+    let page;
+    let questions;
+
+    if (req.is("application/json")) {
+      page = req.body.page;
+      questions = req.body.questions;
+    }
+
+    else if (req.file || req.body.questions) {
+      page = req.body.page;
+      questions = JSON.parse(req.body.questions);
+    }
 
     if (!questions || !questions.length) {
       return res.status(400).json({ success: false });
@@ -369,15 +383,26 @@ app.post('/api/forms/submit', async (req, res) => {
 
     html += `</div>`;
 
+    let attachments = [];
+
+    if (req.file) {
+      attachments.push({
+        filename: req.file.originalname,
+        content: req.file.buffer.toString("base64"),
+        encoding: "base64"
+      });
+    }
+
     await resend.emails.send({
       from: "Status Bot <onboarding@resend.dev>",
       to: [FORM_TO_EMAIL],
       subject: `New Application — ${page}`,
-      html: html
+      html: html,
+      attachments: attachments.length ? attachments : undefined
     });
 
     if (process.env.DISCORD_WEBHOOK_URL) {
-      const embed = {
+      const embedData = {
         embeds: [
           {
             title: `📥 New Application`,
@@ -392,7 +417,17 @@ app.post('/api/forms/submit', async (req, res) => {
         ]
       };
 
-      await axios.post(process.env.DISCORD_WEBHOOK_URL, embed);
+      if (req.file) {
+        const formData = new FormData();
+        formData.append("file", new Blob([req.file.buffer]), req.file.originalname);
+        formData.append("payload_json", JSON.stringify(embedData));
+
+        await axios.post(process.env.DISCORD_WEBHOOK_URL, formData, {
+          headers: formData.getHeaders()
+        });
+      } else {
+        await axios.post(process.env.DISCORD_WEBHOOK_URL, embedData);
+      }
     }
 
     res.json({ success: true });
@@ -402,7 +437,6 @@ app.post('/api/forms/submit', async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-
 
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);

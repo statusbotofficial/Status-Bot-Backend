@@ -25,7 +25,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 
-// ================= UTILS ===============
+// ================= UTILS ================
 function loadPersistentAnnouncement() {
     if (fs.existsSync(PERSISTENT_ANNOUNCEMENT_FILE)) {
         try {
@@ -398,7 +398,7 @@ app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
       to: [FORM_TO_EMAIL],
       subject: `New Application — ${page}`,
       html: html,
-      attachments: attachments.length ? attachments : undefined
+      attachments: attachments.length > 0 ? attachments : undefined
     });
 
     if (process.env.DISCORD_WEBHOOK_URL) {
@@ -417,23 +417,24 @@ app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
         ]
       };
 
-    if (req.file) {
-      const FormData = require("form-data");
-      const formData = new FormData();
-    
-      formData.append("file", req.file.buffer, {
-        filename: req.file.originalname,
-        contentType: req.file.mimetype
-      });
-    
-      formData.append("payload_json", JSON.stringify(embedData));
-    
-      await axios.post(process.env.DISCORD_WEBHOOK_URL, formData, {
-        headers: formData.getHeaders()
-      });
-    
-    } else {
-      await axios.post(process.env.DISCORD_WEBHOOK_URL, embedData);
+      if (req.file) {
+        const FormData = require("form-data");
+        const formData = new FormData();
+
+        formData.append("file", req.file.buffer, {
+          filename: req.file.originalname,
+          contentType: req.file.mimetype
+        });
+
+        formData.append("payload_json", JSON.stringify(embedData));
+
+        await axios.post(process.env.DISCORD_WEBHOOK_URL, formData, {
+          headers: formData.getHeaders()
+        });
+
+      } else {
+        await axios.post(process.env.DISCORD_WEBHOOK_URL, embedData);
+      }
     }
 
     res.json({ success: true });
@@ -447,5 +448,3 @@ app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
-
-

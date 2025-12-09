@@ -347,58 +347,47 @@ app.post('/api/trials/clear-global', (req, res) => {
 
 app.post('/api/forms/submit', async (req, res) => {
   try {
-    const { formName, answers } = req.body ?? {};
+    const { page, questions } = req.body;
 
-    if (!formName || !answers || typeof answers !== 'object' || Object.keys(answers).length === 0) {
-      return res.status(400).json({ success: false, error: 'Missing formName or answers' });
+    if (!questions || !questions.length) {
+      return res.status(400).json({ success: false });
     }
 
-    const formattedAnswers = Object.entries(answers).map(([q, a], i) => {
-      const safeQ = String(q || `Question ${i+1}`).trim();
-      const safeA = String(a ?? '').trim() || 'No answer provided';
-      return `
-        <div style="margin-bottom:12px;">
-          <p style="margin:0;font-weight:700;">${i + 1}. ${escapeHtml(safeQ)}</p>
-          <p style="margin:6px 0 0 0;">${escapeHtml(safeA)}</p>
-        </div>
-      `;
-    }).join("");
-
-    const html = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #111;">
-        <h2 style="margin-top:0;">Status Bot Support</h2>
-        <p style="margin:4px 0 16px 0;"><strong>New application submitted:</strong> ${escapeHtml(formName)}</p>
-        ${formattedAnswers}
-        <hr style="margin-top:18px;"/>
-        <p style="font-size:12px;color:#666;margin-top:8px;">This email was sent automatically from your website.</p>
-      </div>
+    let html = `
+      <div style="font-family: Arial; padding:20px;">
+        <h1>Status Bot Support</h1>
+        <p><b>New application from:</b> ${page}</p>
+        <hr/>
     `;
 
-    if (!FORM_TO_EMAIL) {
-      console.warn('FORM_TO_EMAIL not set in env — skipping email send.');
-    } else {
-      await resend.emails.send({
-        from: `Status Bot <no-reply@${process.env.EMAIL_FROM_DOMAIN || 'status-bot.xyz'}>`,
-        to: [FORM_TO_EMAIL],
-        subject: `New Application — ${formName}`,
-        html
-      });
-    }
+    questions.forEach((q, i) => {
+      html += `
+        <p><b>${i + 1}. ${q.question}</b></p>
+        <p>${q.answer || "No answer provided"}</p>
+      `;
+    });
+
+    html += `</div>`;
+
+    await resend.emails.send({
+      from: "Status Bot <onboarding@resend.dev>",
+      to: [FORM_TO_EMAIL],
+      subject: `New Application — ${page}`,
+      html: html
+    });
 
     if (process.env.DISCORD_WEBHOOK_URL) {
       const embed = {
         embeds: [
           {
-            title: "📥 New Application Submitted",
-            description: `**Form:** ${formName}`,
+            title: `📥 New Application`,
+            description: `**Source:** ${page}`,
             color: 0x4162ff,
-            fields: Object.entries(answers).map(([q, a], i) => ({
-              name: `${i + 1}. ${q}`,
-              value: a && String(a).length <= 1024 ? String(a) : (String(a).slice(0, 1015) + '...'),
+            fields: questions.map((q, i) => ({
+              name: `${i + 1}. ${q.question}`,
+              value: q.answer || "No answer",
               inline: false
-            })),
-            timestamp: new Date().toISOString(),
-            footer: { text: "Status Bot" }
+            }))
           }
         ]
       };
@@ -406,22 +395,14 @@ app.post('/api/forms/submit', async (req, res) => {
       await axios.post(process.env.DISCORD_WEBHOOK_URL, embed);
     }
 
-    return res.json({ success: true });
-  } catch (err) {
-    console.error("Error in /api/forms/submit:", err && err.stack ? err.stack : err);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error("Form submit error:", error);
+    res.status(500).json({ success: false });
   }
 });
 
-function escapeHtml(str) {
-  if (typeof str !== 'string') return str;
-  return str
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
 
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);

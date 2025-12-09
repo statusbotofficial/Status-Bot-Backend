@@ -25,7 +25,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 
-// ================= UTILS ================
+// ================= UTILS ===============
 function loadPersistentAnnouncement() {
     if (fs.existsSync(PERSISTENT_ANNOUNCEMENT_FILE)) {
         try {
@@ -441,3 +441,4 @@ app.post('/api/forms/submit', upload.single("fileUpload"), async (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
